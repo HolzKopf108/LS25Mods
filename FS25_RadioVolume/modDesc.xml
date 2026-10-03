@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
+    <author>Linus</author>
+    <version>2.0.0.0</version>
+    <title>
+        <en>Radio Volume Hotkeys</en>
+        <de>Radio-Lautstärke per Tastendruck</de>
+    </title>
+    <description>
+        <en><![CDATA[Adjust the game's radio volume in 10% steps without opening the settings. Default: Left Ctrl + Left Shift + 4 to decrease, Left Ctrl + Left Shift + 6 to increase. Both controls can be reassigned in the game's controls settings.]]></en>
+        <de><![CDATA[Die Radio-Lautstärke ohne Einstellungsmenü in 10%-Schritten ändern. Standard: Strg links + Shift links + 4 für leiser, Strg links + Shift links + 6 für lauter. Beide Tastenbelegungen lassen sich in den Steuerungseinstellungen ändern.]]></de>
+    </description>
+    <iconFilename>icon.dds</iconFilename>
+    <multiplayer supported="true"/>
+    <extraSourceFiles>
+        <sourceFile filename="scripts/RadioVolume.lua"/>
+    </extraSourceFiles>
+    <actions>
+        <action name="RV25_VOLUME_DOWN" category="ONFOOT VEHICLE" axisType="HALF"/>
+        <action name="RV25_VOLUME_UP" category="ONFOOT VEHICLE" axisType="HALF"/>
+    </actions>
+    <inputBinding>
+        <actionBinding action="RV25_VOLUME_DOWN">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_4" axisComponent="+" neutralInput="0" index="1"/>
+        </actionBinding>
+        <actionBinding action="RV25_VOLUME_UP">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_6" axisComponent="+" neutralInput="0" index="1"/>
+        </actionBinding>
+    </inputBinding>
+    <l10n>
+        <text name="input_RV25_VOLUME_DOWN">
+            <en>Radio: volume down</en>
+            <de>Radio: leiser</de>
+        </text>
+        <text name="input_RV25_VOLUME_UP">
+            <en>Radio: volume up</en>
+            <de>Radio: lauter</de>
+        </text>
+        <text name="rv25_volume">
+            <en>Radio volume: %d%%</en>
+            <de>Radio-Lautstärke: %d%%</de>
+        </text>
+    </l10n>
+</modDesc>
