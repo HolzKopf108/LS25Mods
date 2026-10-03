@@ -1,72 +1,130 @@
--- FS25 1.20: use the player's global input registration, also used in vehicles.
--- Events belong to the input component so FS25 removes/rebuilds them together
--- with its own controls when leaving a game or rebinding keys.
-RadioVolume = {}
-local modI18n = g_i18n
-local modName = g_currentModName
+-- FS25: radioVolume is a 0..1 game setting, not a menu option index.
+-- The SoundMixer owns live audio group volumes and stream volume listeners.
+RadioVolume = {
+    VERSION = "2.1.0.0"
+}
 
-function RadioVolume.registerActionEvents(inputComponent)
-    if not g_modIsLoaded[modName] or not inputComponent.player.isOwner or g_dedicatedServer ~= nil then
+local modName = g_currentModName
+local modI18n = g_i18n
+
+function RadioVolume.isEnabled()
+    return g_dedicatedServer == nil
+        and g_modIsLoaded ~= nil and g_modIsLoaded[modName] == true
+end
+
+function RadioVolume:loadMap()
+    self.loggedContexts = {}
+    self.radioAudioGroup = nil
+
+    if not self.isEnabled() then
         return
     end
 
+    self.radioAudioGroup = AudioGroup.getAudioGroupIndexByName("RADIO")
+    Logging.info("[%s] v%s loaded; RADIO audio group=%s",
+        modName, self.VERSION, tostring(self.radioAudioGroup))
+end
+
+function RadioVolume:deleteMap()
+    -- FS25 removes the action events with their owning input component.
+    self.radioAudioGroup = nil
+    self.loggedContexts = nil
+end
+
+function RadioVolume.registerActionEvents(inputComponent, inputContext)
+    if not RadioVolume.isEnabled() or not inputComponent.player.isOwner then
+        return
+    end
+
+    -- FS25 calls this inside the player OR vehicle registration context.
+    -- Enterable.onRegisterActionEvents uses the same global player hook,
+    -- including when an attached implement is selected.
     local actions = {
-        {InputAction.RV25_VOLUME_DOWN, -1},
-        {InputAction.RV25_VOLUME_UP, 1}
+        {InputAction.RV25_VOLUME_DOWN, RadioVolume.onVolumeDown},
+        {InputAction.RV25_VOLUME_UP, RadioVolume.onVolumeUp}
     }
+    local registered = 0
 
     for _, action in ipairs(actions) do
         local success, eventId = g_inputBinding:registerActionEvent(
-            action[1], inputComponent, RadioVolume.onVolumeInput,
-            false, true, false, true, action[2])
+            action[1], inputComponent, action[2], false, true, false, true)
 
-        if success then
+        if success and eventId ~= nil then
             g_inputBinding:setActionEventTextVisibility(eventId, true)
             g_inputBinding:setActionEventTextPriority(eventId, GS_PRIO_LOW)
+            registered = registered + 1
         else
-            Logging.warning("RadioVolume: could not register %s; check for conflicting controls", tostring(action[1]))
+            Logging.warning("[%s] Could not register %s; check the control binding",
+                modName, tostring(action[1]))
         end
+    end
+
+    local context = inputContext or PlayerInputComponent.INPUT_CONTEXT_NAME
+    RadioVolume.loggedContexts = RadioVolume.loggedContexts or {}
+    if not RadioVolume.loggedContexts[context] then
+        Logging.info("[%s] Hotkeys registered in %s: %d/2", modName, tostring(context), registered)
+        RadioVolume.loggedContexts[context] = registered == 2
     end
 end
 
-function RadioVolume.onVolumeInput(inputComponent, actionName, inputValue, direction)
+function RadioVolume.onVolumeDown(inputComponent, actionName, inputValue)
+    RadioVolume.onVolumeInput(inputComponent, inputValue, -1)
+end
+
+function RadioVolume.onVolumeUp(inputComponent, actionName, inputValue)
+    RadioVolume.onVolumeInput(inputComponent, inputValue, 1)
+end
+
+function RadioVolume.onVolumeInput(inputComponent, inputValue, direction)
     local mission = g_currentMission
-    if not g_modIsLoaded[modName] or inputValue <= 0 or not inputComponent.player.isOwner
-        or g_dedicatedServer ~= nil or mission == nil
-        or g_gui:getIsGuiVisible() then
+    if not RadioVolume.isEnabled() or inputValue <= 0
+        or not inputComponent.player.isOwner or mission == nil
+        or mission.isPlayerFrozen or (g_gui ~= nil and g_gui:getIsGuiVisible()) then
         return
     end
 
-    -- Read the live setting through FS25's reader, rather than keeping a second
-    -- volume which would become stale after changes in the audio menu.
-    local model = g_settingsModel
-    local key = SettingsModel.SETTING.RADIO_VOLUME
-    if model == nil or model.settings[key] == nil
-        or model.settingReaders[key] == nil or model.settingWriters[key] == nil then
-        Logging.warning("RadioVolume: FS25 radio setting is unavailable")
+    if g_gameSettings == nil then
+        Logging.warning("[%s] Game settings are unavailable", modName)
         return
     end
 
-    -- The menu represents Off / 10% / ... / 100% as indices 1 / 2 / ... / 11.
-    local currentIndex = model:getValue(key, true)
-    local maxIndex = #model:getAudioVolumeTexts()
-    local nextIndex = math.max(1, math.min(maxIndex, currentIndex + direction))
+    -- Read on every press so a change in the game's audio menu is respected.
+    local currentVolume = g_gameSettings:getValue("radioVolume")
+    if type(currentVolume) ~= "number" then
+        Logging.warning("[%s] radioVolume is not a number: %s", modName, tostring(currentVolume))
+        return
+    end
 
-    if nextIndex ~= currentIndex then
-        model:setValue(key, nextIndex)
+    local group = RadioVolume.radioAudioGroup or AudioGroup.getAudioGroupIndexByName("RADIO")
+    local mixer = g_soundMixer
+    if group == nil or mixer == nil or mixer.volumeFactors[group] == nil then
+        Logging.warning("[%s] The RADIO SoundMixer group is unavailable", modName)
+        return
+    end
+    RadioVolume.radioAudioGroup = group
 
-        -- Apply exactly the writer used by the audio settings menu. Unlike
-        -- applyChanges(), this commits only radio volume, leaving other pending
-        -- menu changes alone. The writer updates the setting and the mixer.
-        model.settingWriters[key](nextIndex, key)
-        local state = model.settings[key]
-        state.initial = nextIndex
-        state.saved = nextIndex
+    -- Integer steps avoid accumulated floating point errors at 0% and 100%.
+    local currentStep = math.floor(currentVolume * 10 + 0.5)
+    local nextStep = math.max(0, math.min(10, currentStep + direction))
+    local nextVolume = nextStep / 10
+
+    -- A bare setAudioGroupVolume would bypass the mixer's stream listeners
+    -- and could be overwritten on the next state change. Let FS25 apply the
+    -- factor in its next mixer update, including the normal fades/muting.
+    mixer:setAudioGroupVolumeFactor(group, nextVolume)
+    if currentVolume ~= nextVolume then
+        g_gameSettings:setValue("radioVolume", nextVolume)
         g_gameSettings:save()
     end
 
-    mission:showBlinkingWarning(string.format(modI18n:getText("rv25_volume"), (nextIndex - 1) * 10), 2000)
+    local percent = nextStep * 10
+    mission:showBlinkingWarning(string.format(modI18n:getText("rv25_volume"), percent), 2000)
+    Logging.info("[%s] Radio volume: %d%% -> %d%% (RADIO group=%s)",
+        modName, math.floor(currentVolume * 100 + 0.5), percent, tostring(group))
 end
 
+-- Install once when the source is loaded, not again on each map load.
 PlayerInputComponent.registerGlobalPlayerActionEvents = Utils.appendedFunction(
     PlayerInputComponent.registerGlobalPlayerActionEvents, RadioVolume.registerActionEvents)
+
+addModEventListener(RadioVolume)
