@@ -32,10 +32,20 @@ g_gameSettings = {
     end,
     save = function() saves = saves + 1 end
 }
-g_currentMission = {showBlinkingWarning = function(_, message, duration)
-    assert(duration == 2000)
-    table.insert(messages, message)
-end}
+local function addSideNotification(self, text, color, duration)
+    local notification = {text = text, color = color, duration = duration, startDuration = duration}
+    table.insert(self.notificationQueue, notification)
+end
+local sideNotification = {
+    notificationQueue = messages,
+    savingIcon = {},
+    isSaving = false,
+    addNotification = SideNotification and SideNotification.addNotification or addSideNotification
+}
+g_currentMission = {
+    hud = {sideNotification = sideNotification},
+    showBlinkingWarning = function() error("radio must not show a central warning") end
+}
 
 -- FS25's update uses game-state volume * user factor; streams receive listeners.
 GameState = {LOADING = 0}
@@ -106,7 +116,9 @@ function g_inputBinding:registerActionEvent(action, target, callback, up, down, 
     self.events[id] = {action = action, target = target, callback = callback, context = self.context}
     return true, id
 end
-function g_inputBinding:setActionEventTextVisibility(id, value) assert(self.events[id] and value) end
+function g_inputBinding:setActionEventTextVisibility(id, value)
+    assert(self.events[id] and value == false, "radio hotkeys stay hidden in the F1 help")
+end
 function g_inputBinding:setActionEventTextPriority(id, value) assert(self.events[id] and value == GS_PRIO_LOW) end
 function g_inputBinding:removeActionEventsByTarget(target)
     for id, event in pairs(self.events) do
@@ -120,7 +132,7 @@ dofile(testDirectory .. "../scripts/RadioVolume.lua")
 assert(listeners.mod == RadioVolume)
 assert(g_settingsModel == nil and SettingsModel == nil)
 RadioVolume:loadMap()
-assert(infos[1]:find("v2.1.0.0 loaded", 1, true))
+assert(infos[1]:find("v" .. RadioVolume.VERSION .. " loaded", 1, true))
 
 local owner = {player = {isOwner = true}, locked = true}
 local remote = {player = {isOwner = false}}
@@ -172,7 +184,7 @@ assertVolume(0)
 assert(saves == 7)
 for i = 1, 20 do press(up); flushMixer() end
 assertVolume(1)
-assert(saves == 17 and messages[#messages] == "Radio volume: 100%")
+assert(saves == 17 and #messages == 1 and messages[1].text == "Radio volume: 100%")
 
 -- A live menu change must override any previously remembered hotkey volume.
 settings.radioVolume = 0.2
@@ -217,7 +229,10 @@ assert(saves == beforeSaves + 1)
 g_inputBinding:removeActionEventsByTarget(owner)
 assert(next(g_inputBinding.events) == nil)
 local hook = PlayerInputComponent.registerGlobalPlayerActionEvents
-RadioVolume:deleteMap(); RadioVolume:loadMap()
+RadioVolume:deleteMap()
+-- FS25 disposes of the old mission HUD before constructing the next one.
+for i = #messages, 1, -1 do table.remove(messages, i) end
+RadioVolume:loadMap()
 assert(PlayerInputComponent.registerGlobalPlayerActionEvents == hook)
 local newOwner = {player = {isOwner = true}}
 PlayerInputComponent.registerGlobalPlayerActionEvents(newOwner, "VEHICLE")
@@ -239,4 +254,37 @@ local gameSettings = g_gameSettings
 g_gameSettings = nil; press(down); g_gameSettings = gameSettings
 settings.radioVolume = nil; press(down); settings.radioVolume = 0.2
 assert(#warnings == 6 and saves == beforeSaves and #messages == beforeMessages)
-print("PASS: radio setting, audible engine/stream path, vehicle/foot inputs, limits, persistence and lifecycle")
+
+-- Rapid volume changes replace one native row and restart its two-second timer.
+local radioRow = RadioVolume.volumeNotification
+radioRow.duration = 500
+sideNotification:addNotification("Helper is blocked", {1, 0.3, 0, 1}, 9000)
+sideNotification:addNotification("Contract finished", {1, 1, 1, 1}, 6000)
+local helperRow, contractRow = messages[2], messages[3]
+sideNotification.isSaving = true
+up = eventFor(InputAction.RV25_VOLUME_UP, "VEHICLE")
+for i = 1, 5 do press(up); flushMixer() end
+assertVolume(0.7)
+assert(#messages == 3 and messages[1] == radioRow and radioRow.text == "Radio volume: 70%")
+assert(radioRow.duration == 2000 and radioRow.startDuration == 2000)
+assert(messages[2] == helperRow and helperRow.duration == 9000)
+assert(messages[3] == contractRow and contractRow.duration == 6000)
+assert(sideNotification.isSaving, "the game's Saving indicator must be untouched")
+for i = 1, 5 do press(down); flushMixer() end
+assertVolume(0.2)
+assert(#messages == 3 and radioRow.text == "Radio volume: 20%")
+
+-- Once FS25 removes the expired row, the next press creates one fresh row.
+table.remove(messages, 1)
+press(up); flushMixer(); assertVolume(0.3)
+assert(#messages == 3 and RadioVolume.volumeNotification ~= radioRow)
+assert(messages[1] == helperRow and messages[2] == contractRow)
+assert(messages[3].text == "Radio volume: 30%")
+
+-- Resolve the FS25 display even if its HUD field has a different name.
+g_currentMission.hud = {rightHandDisplay = sideNotification}
+press(down); flushMixer(); assertVolume(0.2)
+assert(#messages == 3 and messages[3].text == "Radio volume: 20%")
+RadioVolume:deleteMap()
+assert(RadioVolume.volumeNotification == nil)
+print("PASS: radio audio/settings, hidden F1 actions, one native side notification, timer reset and lifecycle")

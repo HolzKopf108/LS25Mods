@@ -1,7 +1,8 @@
 -- FS25: radioVolume is a 0..1 game setting, not a menu option index.
 -- The SoundMixer owns live audio group volumes and stream volume listeners.
 RadioVolume = {
-    VERSION = "2.1.0.0"
+    VERSION = "2.2.0.0",
+    NOTIFICATION_DURATION = 2000
 }
 
 local modName = g_currentModName
@@ -15,6 +16,7 @@ end
 function RadioVolume:loadMap()
     self.loggedContexts = {}
     self.radioAudioGroup = nil
+    self.volumeNotification = nil
 
     if not self.isEnabled() then
         return
@@ -29,6 +31,7 @@ function RadioVolume:deleteMap()
     -- FS25 removes the action events with their owning input component.
     self.radioAudioGroup = nil
     self.loggedContexts = nil
+    self.volumeNotification = nil
 end
 
 function RadioVolume.registerActionEvents(inputComponent, inputContext)
@@ -50,8 +53,7 @@ function RadioVolume.registerActionEvents(inputComponent, inputContext)
             action[1], inputComponent, action[2], false, true, false, true)
 
         if success and eventId ~= nil then
-            g_inputBinding:setActionEventTextVisibility(eventId, true)
-            g_inputBinding:setActionEventTextPriority(eventId, GS_PRIO_LOW)
+            g_inputBinding:setActionEventTextVisibility(eventId, false)
             registered = registered + 1
         else
             Logging.warning("[%s] Could not register %s; check the control binding",
@@ -73,6 +75,45 @@ end
 
 function RadioVolume.onVolumeUp(inputComponent, actionName, inputValue)
     RadioVolume.onVolumeInput(inputComponent, inputValue, 1)
+end
+
+function RadioVolume:showVolumeNotification(mission, percent)
+    local hud = mission.hud
+    local display = hud ~= nil and hud.sideNotification or nil
+
+    -- Locate the native FS25 display if the HUD exposes it under another name.
+    -- Its saving icon and notification queue identify the right-hand display.
+    if display == nil and hud ~= nil then
+        for _, element in pairs(hud) do
+            if type(element) == "table" and element.savingIcon ~= nil
+                and type(element.notificationQueue) == "table"
+                and type(element.addNotification) == "function" then
+                display = element
+                break
+            end
+        end
+    end
+
+    if display == nil then
+        Logging.warning("[%s] Side notification display is unavailable", modName)
+        return
+    end
+
+    local text = string.format(modI18n:getText("rv25_volume"), percent)
+    local queue = display.notificationQueue
+    for _, notification in ipairs(queue) do
+        if notification == self.volumeNotification then
+            -- Refresh this single row, leaving every other HUD message intact.
+            notification.text = text
+            notification.duration = self.NOTIFICATION_DURATION
+            notification.startDuration = self.NOTIFICATION_DURATION
+            return
+        end
+    end
+
+    -- The previous row expired (or this is the first press).
+    display:addNotification(text, {1, 1, 1, 1}, self.NOTIFICATION_DURATION)
+    self.volumeNotification = queue[#queue]
 end
 
 function RadioVolume.onVolumeInput(inputComponent, inputValue, direction)
@@ -118,7 +159,7 @@ function RadioVolume.onVolumeInput(inputComponent, inputValue, direction)
     end
 
     local percent = nextStep * 10
-    mission:showBlinkingWarning(string.format(modI18n:getText("rv25_volume"), percent), 2000)
+    RadioVolume:showVolumeNotification(mission, percent)
     Logging.info("[%s] Radio volume: %d%% -> %d%% (RADIO group=%s)",
         modName, math.floor(currentVolume * 100 + 0.5), percent, tostring(group))
 end
