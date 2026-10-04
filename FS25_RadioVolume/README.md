@@ -64,10 +64,10 @@ Das Build-Script erstellt nur das Mod-Paket: `modDesc.xml`, Icon und Lua-Script.
 
 Recherche vom 03.10.2026, ausschließlich zur FS25-Umsetzung:
 
-- [GIANTS FS25: SoundMixer](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=76&class=612&version=script) – Faktor, Mixer-Update, Engine-Aufruf und Lautstärke-Listener.
-- [GIANTS FS25: SideNotification](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=1&class=110&version=script) – kleine native Meldungen oben rechts, gemeinsame Anzeige mit „Saving“, Anzeigedauer und Meldungseinträge.
-- [GIANTS FS25: Enterable](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=78&class=661&version=script) – Fahrzeugregistrierung der globalen Spieleraktionen.
-- [GIANTS FS25: PlayerInputComponent](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=69&class=600&version=engine) – Spieleraktionen, Eingabekontexte und Entfernen von Eingaben.
-- [GIANTS FS25: SettingsModel](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=486&version=engine) – Abgrenzung des temporären Menümodells von den Spieleinstellungen und Speicherung.
-- [Offizieller ModHub: Radio Volume Hotkeys für FS25](https://www.farming-simulator.com/mod.php?country=cl&lang=en&mod_id=362183) – zusätzlicher API-Abgleich von `radioVolume` und der Radio-Audiogruppe anhand des veröffentlichten FS25-Pakets. Kein fremdes Script oder Asset ist im Paket enthalten.
-- [Offizielles FS25-Mod-Schema](https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd) – Aktionen, Standardbelegungen und Script-Einstiegspunkt.
+- [GIANTS FS25: SoundMixer](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=76&class=612&version=script) - Faktor, Mixer-Update, Engine-Aufruf und Lautstärke-Listener.
+- [GIANTS FS25: SideNotification](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=1&class=110&version=script) - kleine native Meldungen oben rechts, gemeinsame Anzeige mit „Saving“, Anzeigedauer und Meldungseinträge.
+- [GIANTS FS25: Enterable](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=78&class=661&version=script) - Fahrzeugregistrierung der globalen Spieleraktionen.
+- [GIANTS FS25: PlayerInputComponent](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=69&class=600&version=engine) - Spieleraktionen, Eingabekontexte und Entfernen von Eingaben.
+- [GIANTS FS25: SettingsModel](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=486&version=engine) - Abgrenzung des temporären Menümodells von den Spieleinstellungen und Speicherung.
+- [Offizieller ModHub: Radio Volume Hotkeys für FS25](https://www.farming-simulator.com/mod.php?country=cl&lang=en&mod_id=362183) - zusätzlicher API-Abgleich von `radioVolume` und der Radio-Audiogruppe anhand des veröffentlichten FS25-Pakets. Kein fremdes Script oder Asset ist im Paket enthalten.
+- [Offizielles FS25-Mod-Schema](https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd) - Aktionen, Standardbelegungen und Script-Einstiegspunkt.

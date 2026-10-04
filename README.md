@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/ls25-banner.gif" alt="LS25 Mods – animierter Traktor auf grünen Feldern vor einer goldenen Sonne" width="1000">
+  <img src=".github/assets/ls25-banner.gif" alt="LS25 Mods - animierter Traktor auf grünen Feldern vor einer goldenen Sonne" width="1000">
 </p>
 
 <h1 align="center">🌾 LS25 Mods</h1>
