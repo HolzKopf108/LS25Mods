@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
+    <author>Linus</author>
+    <version>0.1.0.0</version>
+    <title>
+        <en>Tractor Media Screen - Prototype</en>
+        <de>Tractor Media Screen - Prototyp</de>
+    </title>
+    <description>
+        <en><![CDATA[Development prototype for a configurable cab monitor on the base-game Valtra S Series. Includes a local test pattern, picture-in-picture and native HUD video diagnostics. YouTube and Twitch playback are not implemented. The monitor position needs in-game calibration. Each player's media stays local.]]></en>
+        <de><![CDATA[Entwicklungsprototyp für einen konfigurierbaren Kabinenmonitor der Basisspiel-Valtra S-Serie. Enthält ein lokales Testbild, Bild-in-Bild und Tests der nativen HUD-Videowiedergabe. YouTube- und Twitch-Wiedergabe sind noch nicht implementiert. Die Monitorposition muss im Spiel kalibriert werden. Medien bleiben pro Spieler lokal.]]></de>
+    </description>
+    <iconFilename>icon.dds</iconFilename>
+    <multiplayer supported="true"/>
+    <specializations>
+        <specialization name="tractorMediaScreen" className="TMSVehicle" filename="scripts/vehicle/TMSVehicle.lua"/>
+    </specializations>
+    <extraSourceFiles>
+        <sourceFile filename="scripts/TMSProfiles.lua"/>
+        <sourceFile filename="scripts/media/TMSMediaSource.lua"/>
+        <sourceFile filename="scripts/media/TMSNativeVideo.lua"/>
+        <sourceFile filename="scripts/vehicle/TMSConfiguration.lua"/>
+        <sourceFile filename="scripts/TractorMediaScreen.lua"/>
+    </extraSourceFiles>
+    <actions>
+        <action name="TMS25_MENU" category="VEHICLE" axisType="HALF"/>
+        <action name="TMS25_PIP" category="VEHICLE" axisType="HALF"/>
+        <action name="TMS25_PATTERN" category="VEHICLE" axisType="HALF"/>
+        <action name="TMS25_VIDEO_TEST" category="VEHICLE" axisType="HALF"/>
+    </actions>
+    <inputBinding>
+        <actionBinding action="TMS25_MENU"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_7" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
+        <actionBinding action="TMS25_PIP"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_8" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
+        <actionBinding action="TMS25_PATTERN"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_9" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
+        <actionBinding action="TMS25_VIDEO_TEST"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_0" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
+    </inputBinding>
+    <l10n>
+        <text name="input_TMS25_MENU"><en>Media screen: enter link</en><de>Medienbildschirm: Link eingeben</de></text>
+        <text name="input_TMS25_PIP"><en>Media screen: picture-in-picture</en><de>Medienbildschirm: Bild-in-Bild</de></text>
+        <text name="input_TMS25_PATTERN"><en>Media screen: cab test pattern</en><de>Medienbildschirm: Kabinen-Testbild</de></text>
+        <text name="input_TMS25_VIDEO_TEST"><en>Media screen: start/stop HUD video test</en><de>Medienbildschirm: HUD-Videotest starten/stoppen</de></text>
+        <text name="tms_configuration"><en>Media screen</en><de>Medienbildschirm</de></text>
+        <text name="tms_without"><en>Without monitor</en><de>Ohne Monitor</de></text>
+        <text name="tms_with"><en>With monitor (prototype)</en><de>Mit Monitor (Prototyp)</de></text>
+        <text name="tms_patternTest"><en>Tractor Media Screen - test pattern</en><de>Tractor Media Screen - Testbild</de></text>
+        <text name="tms_videoTest"><en>HUD video test - no cab video yet</en><de>HUD-Videotest - noch kein Video in der Kabine</de></text>
+        <text name="tms_menuTitle"><en>Media screen - link test</en><de>Medienbildschirm - Linktest</de></text>
+        <text name="tms_linkPrompt"><en>Enter a YouTube link. Playback is not available in this prototype.</en><de>YouTube-Link eingeben. Die Wiedergabe ist in diesem Prototyp noch nicht verfügbar.</de></text>
+        <text name="tms_checkLink"><en>Check link</en><de>Link prüfen</de></text>
+        <text name="tms_invalidLink"><en>This is not a supported video link.</en><de>Das ist kein unterstützter Videolink.</de></text>
+        <text name="tms_unsupportedProvider"><en>Please enter a YouTube link. Twitch is planned as a later extension.</en><de>Bitte einen YouTube-Link eingeben. Twitch ist als spätere Erweiterung vorgesehen.</de></text>
+        <text name="tms_providerUnavailable"><en>Link recognized. YouTube and Twitch playback are not yet available. The link is kept only on your client for this vehicle session.</en><de>Link erkannt. YouTube- und Twitch-Wiedergabe sind noch nicht verfügbar. Der Link bleibt nur auf deinem Client für diese Fahrzeugsitzung gespeichert.</de></text>
+        <text name="tms_monitorUnavailable"><en>The monitor has not loaded or the test texture could not be applied. Please check log.txt.</en><de>Der Monitor ist noch nicht geladen oder das Testbild konnte nicht gesetzt werden. Bitte log.txt prüfen.</de></text>
+        <text name="tms_nativeUnavailable"><en>The native video test could not start. Please check log.txt.</en><de>Der native Videotest konnte nicht starten. Bitte log.txt prüfen.</de></text>
+    </l10n>
+</modDesc>
