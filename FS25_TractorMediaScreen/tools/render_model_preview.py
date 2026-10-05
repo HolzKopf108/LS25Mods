@@ -56,8 +56,8 @@ def main():
         return struct.pack(">I", len(data))+name+data+struct.pack(">I", zlib.crc32(name+data))
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">2I5B",width,height,8,2,0,0,0))
     png += chunk(b"IDAT",zlib.compress(raw,9))+chunk(b"IEND",b"")
-    destination = MOD / "dist/monitor_preview.png"
-    destination.parent.mkdir(exist_ok=True)
+    destination = MOD / "assets/monitor/monitor_preview.png"
+    destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(png)
     print(destination)
 

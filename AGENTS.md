@@ -34,6 +34,7 @@ FS25_<Name>/
 - Keine modbezogenen tests/- oder tools/-Ordner im Repository-Stamm erstellen. Auch bei zehn oder mehr Mods bleibt jeder Mod eigenstaendig.
 - Bei Bedarf weitere Ordner fuer Texturen, Modelle, XML-Konfigurationen, Lokalisierung, Sounds oder andere Assets anlegen. Zusammengehoerende Bestandteile sinnvoll gliedern; groessere Mods nicht in eine einzige Lua-Datei pressen.
 - Leere Standardordner neuer Mods bei Bedarf mit .gitkeep nachvollziehbar machen. dist/ enthaelt erzeugte Ergebnisse und ist ueber /*/dist/ ignoriert. Keine ZIP-Dateien oder Python-Caches ungefragt versionieren.
+- In dist/ gehoeren nur Dateien zur Installation des Mods, derzeit das fertige ZIP. Modellvorschauen, Screenshots und andere Entwicklungsartefakte ausserhalb von dist/ ablegen und nicht ins Mod-Paket aufnehmen.
 - Die README im Repository-Stamm bleibt eine allgemeine, visuelle Vorstellung des LS25-Mod-Repositories. Keine konkreten Mods, Installationsanleitungen einzelner Mods oder technischen Agent-Anweisungen dort einbauen. Bestehende Animationen unter .github/assets/ erhalten.
 
 ## Python-Build und ZIP
