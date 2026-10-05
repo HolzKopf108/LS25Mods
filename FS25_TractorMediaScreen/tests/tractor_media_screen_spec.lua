@@ -10,6 +10,7 @@ local function load(relative) dofile(mod .. "/" .. relative) end
 load("scripts/TMSProfiles.lua")
 load("scripts/media/TMSMediaSource.lua")
 load("scripts/media/TMSNativeVideo.lua")
+load("scripts/media/TMSVideoProbe.lua")
 
 for _, url in ipairs({"https://youtube.com/watch?v=dQw4w9WgXcQ", "youtu.be/dQw4w9WgXcQ",
     "https://www.youtube.com/shorts/dQw4w9WgXcQ?feature=share", "https://m.youtube.com/watch?a=1&v=dQw4w9WgXcQ"}) do
@@ -32,9 +33,11 @@ check(TMSProfiles.find("mydata/vehicles/valtra/sSeries/sSeries.xml") == nil, "Re
 
 local created, stopped, deleted, started = 0, 0, 0, 0
 local ready, playing, throwUpdate = false, false, false
+local lastLoop
 local api = {
     createVideoOverlay = function(filename, looping, volume)
-        check(looping == false and volume == 0.25, "Explicit loop/volume settings")
+        check(type(looping) == "boolean" and volume == 0.25, "Explicit loop/volume settings")
+        lastLoop = looping
         created = created + 1; return 100 + created
     end,
     isVideoOverlayReadyToPlay = function() return ready end,
@@ -47,6 +50,7 @@ local api = {
 }
 local video = TMSNativeVideo.new(api)
 check(video:start("test.ogv", 0.25), "Native creation")
+check(lastLoop == false, "Default probe backend playback is not looping")
 video:update(16)
 check(started == 0 and video.state == "loading", "Wait for decoder readiness")
 ready = true
@@ -92,10 +96,12 @@ g_dedicatedServer = nil
 g_gui = {getIsGuiVisible = function() return false end}
 g_currentMission = {isPlayerFrozen = false}
 Logging = {info = function() end, warning = function() end}
-InfoDialog = {show = function(text) InfoDialog.last = text end}
-TextInputDialog = {show = function(callback, target, default, title, prompt, length, confirm, args)
-    TextInputDialog.pending = function(text, ok) callback(target, text, ok, args) end
-end}
+InfoDialog = {count = 0, show = function(text) InfoDialog.last = text; InfoDialog.count = InfoDialog.count + 1 end}
+TMSLinkDialog = {register = function() end, reset = function() end,
+    show = function(callback, target, default, title, prompt, confirm, args)
+        TMSLinkDialog.pending = function(text, ok, action) callback(target, text, ok, args, action) end
+        return true
+    end}
 Enterable = {}
 SpecializationUtil = {hasSpecialization = function(spec, specs)
     for _, candidate in ipairs(specs) do if candidate == spec then return true end end
@@ -159,6 +165,8 @@ local specKey = "spec_FS25_TractorMediaScreen.tractorMediaScreen"
 local function makeVehicle()
     local vehicle = {configFileName = "data/vehicles/valtra/sSeries/sSeries.xml",
         configurations = {tmsMonitor = 2}, isClient = true, components = {{node = 20}},
+        spec_enterable = {cameras = {{isInside = true, cameraNode = 30, cameraPositionNode = 30,
+            rotateNode = 30, origTransX = 0, origTransY = 1, origTransZ = 0}}},
         [specKey] = {}, getIsEntered = function() return true end}
     function vehicle:loadSubSharedI3DFile(path, create, physics, callback, target, args)
         self.pending = function(node) callback(target, node, nil, args) end
@@ -174,9 +182,13 @@ function getChildAt(id) return id + 1 end
 function link(parent, child) linked[child] = parent end
 function setTranslation() end
 function setRotation() end
+function setDirection() end
+function getParent(node) return node == 30 and 25 or node == 25 and 20 or 0 end
+function localDirectionToLocal(from, to, x, y, z) return x, y, z end
 g_i3DManager = {releaseSharedI3DFile = function() released = released + 1 end}
 v1.pending(1000); v2.pending(2000)
-check(linked[1001] == 20 and linked[2001] == 20, "Monitor is fixed to vehicle, never camera")
+TMSVehicle.onLoadFinished(v1); TMSVehicle.onLoadFinished(v2)
+check(linked[1001] == 25 and linked[2001] == 25, "Monitor is fixed to cabin parent, never moving camera")
 local materialByNode, edits = {}, {}
 function getMaterial(node) return materialByNode[node] or 5 end
 function setMaterial(node, material) materialByNode[node] = material end
@@ -199,11 +211,11 @@ check(bindings == 4, "Four local bindings")
 TractorMediaScreen.registerActionEvents({player = {isOwner = false}}, "VEHICLE")
 check(bindings == 4, "No remote player bindings")
 TractorMediaScreen.onMenu(input, nil, 1)
-TextInputDialog.pending("https://youtu.be/dQw4w9WgXcQ", true)
+TMSLinkDialog.pending("https://youtu.be/dQw4w9WgXcQ", true)
 check(TractorMediaScreen.source.provider == "youtube" and TractorMediaScreen.video.id == nil,
     "YouTube URL never passed to native decoder")
 TractorMediaScreen.onMenu(input, nil, 1)
-local stale = TextInputDialog.pending
+local stale = TMSLinkDialog.pending
 g_localPlayer.getCurrentVehicle = function() return v2 end
 TractorMediaScreen:update(16)
 stale("https://youtu.be/dQw4w9WgXcQ", true)
@@ -211,9 +223,37 @@ check(TractorMediaScreen.source == nil, "Stale dialog cannot change new vehicle 
 TractorMediaScreen.onPip(input, nil, 1)
 check(TractorMediaScreen.pip, "PiP toggles locally")
 check(TractorMediaScreen:startVideoTest("ogv"), "Local HUD probe can start")
+check(lastLoop == true, "Driver test repeats until stopped")
 local decoder = TractorMediaScreen.video.id
 TractorMediaScreen.onPip(input, nil, 1)
 check(not TractorMediaScreen.pip and TractorMediaScreen.video.id == nil, "Hidden HUD probe stops audio")
+ready = false
+TractorMediaScreen.onVideoTest(input, nil, 1)
+check(TractorMediaScreen.videoProbe.format == "mp4" and TractorMediaScreen.pip,
+    "Video key immediately opens PiP and starts automatic MP4 probe")
+TractorMediaScreen:update(15001)
+check(TractorMediaScreen.videoProbe.format == "ogv", "Loading failure automatically tries OGV")
+TractorMediaScreen:update(15001)
+check(TractorMediaScreen.videoProbe.format == "webm", "Second loading failure automatically tries WebM")
+local messagesBefore = InfoDialog.count
+TractorMediaScreen:update(15001)
+TractorMediaScreen:update(16)
+check(TractorMediaScreen.videoProbe.failed and TractorMediaScreen.video.id == nil,
+    "All unsupported formats release resources and end retries")
+check(InfoDialog.count == messagesBefore + 1 and InfoDialog.last:find("loadingTimeout", 1, true),
+    "Asynchronous native failure is shown to driver exactly once with diagnostic reason")
+TractorMediaScreen.onVideoTest(input, nil, 1)
+check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "mp4",
+    "A fresh video key press can retry after failure")
+g_gui.getIsGuiVisible = function() return true end
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.videoProbe.active and TractorMediaScreen.video.id == nil,
+    "Menu opening cancels format fallback and stops audio")
+g_gui.getIsGuiVisible = function() return false end
+TractorMediaScreen.onMenu(input, nil, 1)
+TMSLinkDialog.pending("", true, "videoTest")
+check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "mp4",
+    "Menu button starts video without a URL or video shortcut")
 TractorMediaScreen:startVideoTest("mp4")
 g_localPlayer.getCurrentVehicle = function() return nil end
 TractorMediaScreen:update(16)

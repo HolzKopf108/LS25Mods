@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.0.0",
+    VERSION = "0.1.1.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -29,6 +29,7 @@ function TractorMediaScreen:loadMap()
     self.active = self.isEnabled() and g_dedicatedServer == nil
     self.registeredContexts = {}
     if not self.active then return end
+    TMSLinkDialog.register(self.modDirectory)
     self.video = TMSNativeVideo.new({
         createVideoOverlay = createVideoOverlay,
         isVideoOverlayReadyToPlay = isVideoOverlayReadyToPlay,
@@ -36,22 +37,26 @@ function TractorMediaScreen:loadMap()
         playVideoOverlay = playVideoOverlay,
         updateVideoOverlay = updateVideoOverlay,
         stopVideoOverlay = stopVideoOverlay,
+        getVideoOverlayCurrentTime = getVideoOverlayCurrentTime,
+        fileExists = fileExists,
         renderOverlay = renderOverlay,
         delete = delete
     })
+    self.videoProbe = TMSVideoProbe.new(self.video, self.modDirectory)
     self.overlay = createImageOverlay(self.modDirectory .. "assets/monitor/testPattern.dds")
     Logging.info("[TractorMediaScreen] v%s loaded; GUI video missing APIs: %s; 3D video=unverified; YouTube=unavailable",
         self.VERSION, table.concat(self.video:missingFunctions(), ","))
     addConsoleCommand("tmsStatus", "Tractor Media Screen: local diagnostic status", "consoleStatus", self)
     addConsoleCommand("tmsMount", "Monitor position: x y z rx ry rz (meters/degrees)", "consoleMount", self)
     addConsoleCommand("tmsNodes", "List candidate cabin mappings", "consoleNodes", self)
-    addConsoleCommand("tmsVideo", "Test native HUD video: ogv, mp4, webm or stop", "consoleVideo", self)
+    addConsoleCommand("tmsVideo", "Test native HUD video: auto, mp4, ogv, webm or stop", "consoleVideo", self)
 end
 
 function TractorMediaScreen:deleteMap()
     self:releaseSession()
+    if self.active then TMSLinkDialog.reset() end
     if self.overlay ~= nil and self.overlay ~= 0 then delete(self.overlay) end
-    self.overlay, self.video = nil, nil
+    self.overlay, self.video, self.videoProbe = nil, nil, nil
     if self.active then
         for _, name in ipairs({"tmsStatus", "tmsMount", "tmsNodes", "tmsVideo"}) do
             removeConsoleCommand(name)
@@ -61,7 +66,7 @@ function TractorMediaScreen:deleteMap()
 end
 
 function TractorMediaScreen:releaseSession()
-    if self.video ~= nil then self.video:stop() end
+    self:stopVideoTest()
     if self.vehicle ~= nil then TMSVehicle.setTestPattern(self.vehicle, false) end
     self.vehicle, self.source, self.lastInput = nil, nil, nil
     self.pip = false
@@ -94,14 +99,11 @@ function TractorMediaScreen:update(dt)
     if self.video == nil then return end
     -- The prototype has no native pause/seek API. Stop when a menu opens.
     if g_gui ~= nil and g_gui:getIsGuiVisible() then
-        if self.video.id ~= nil then self.video:stop() end
+        if self.videoProbe.active then self:stopVideoTest() end
         return
     end
-    local before = self.video.state
-    self.video:update(dt)
-    if before ~= self.video.state then
-        Logging.info("[TractorMediaScreen] Native video state: %s", self.video.state)
-    end
+    self.videoProbe:update(dt)
+    self:showVideoFailure()
 end
 
 function TractorMediaScreen:draw()
@@ -109,8 +111,8 @@ function TractorMediaScreen:draw()
         or (g_gui ~= nil and g_gui:getIsGuiVisible()) then return end
     local aspect = (g_screenWidth or 1920) / (g_screenHeight or 1080)
     local width = math.min(0.30, 0.48 * 16 / 9 / aspect)
-    local x, y, height = 0.98 - width, 0.20, width * aspect * 9 / 16
-    if self.video ~= nil and self.video.id ~= nil then
+    local x, y, height = 0.98 - width, 0.29, width * aspect * 9 / 16
+    if self.video ~= nil and self.video.state == "playing" then
         self.video:draw(x, y, width, height)
     elseif self.overlay ~= nil and self.overlay ~= 0 then
         renderOverlay(self.overlay, x, y, width, height)
@@ -118,8 +120,17 @@ function TractorMediaScreen:draw()
     setTextColor(1, 1, 1, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextBold(false)
-    local caption = self.i18n:getText(self.video ~= nil and self.video.id ~= nil
-        and "tms_videoTest" or "tms_patternTest")
+    local caption = self.i18n:getText("tms_patternTest")
+    if self.videoProbe ~= nil and self.videoProbe.active then
+        if self.video.state == "playing" then
+            caption = self.i18n:getText("tms_videoTest") .. " (" .. string.upper(self.videoProbe.format) .. ")"
+        else
+            caption = string.format(self.i18n:getText("tms_videoLoading"),
+                string.upper(self.videoProbe.format), math.floor(self.video.elapsed / 1000))
+        end
+    elseif self.videoProbe ~= nil and self.videoProbe.failed then
+        caption = self.i18n:getText("tms_videoFailed")
+    end
     renderText(x, y + height + 0.006, getCorrectTextSize(0.014), caption)
 end
 
@@ -160,7 +171,7 @@ function TractorMediaScreen.onPip(input, name, value)
     if not TractorMediaScreen.canHandle(input, value) then return end
     local self = TractorMediaScreen
     self.pip = not self.pip
-    if not self.pip and self.video ~= nil then self.video:stop() end
+    if not self.pip then self:stopVideoTest() end
 end
 
 function TractorMediaScreen.onPattern(input, name, value)
@@ -173,25 +184,36 @@ function TractorMediaScreen.onPattern(input, name, value)
 end
 
 function TractorMediaScreen.onVideoTest(input, name, value)
-    if not TractorMediaScreen.canHandle(input, value) then return end
     local self = TractorMediaScreen
-    if self.video.id ~= nil then self.video:stop(); return end
-    local ok = self:startVideoTest("ogv")
-    if not ok then InfoDialog.show(self.i18n:getText("tms_nativeUnavailable")) end
+    if not self.canHandle(input, value) then
+        Logging.info("[TractorMediaScreen] Video hotkey ignored: no equipped local vehicle or menu/input blocked")
+        return
+    end
+    Logging.info("[TractorMediaScreen] Video hotkey received")
+    if self.videoProbe.active then self:stopVideoTest(); return end
+    self:startVideoTest("auto")
+    self:showVideoFailure()
 end
 
 function TractorMediaScreen.onMenu(input, name, value)
     if not TractorMediaScreen.canHandle(input, value) then return end
     local self = TractorMediaScreen
-    self.video:stop()
-    TextInputDialog.show(self.onLinkEntered, self, self.lastInput or "",
+    self:stopVideoTest()
+    local shown = TMSLinkDialog.show(self.onLinkEntered, self, self.lastInput or "",
         self.i18n:getText("tms_menuTitle"), self.i18n:getText("tms_linkPrompt"),
-        2048, self.i18n:getText("tms_checkLink"), self.generation)
+        self.i18n:getText("tms_checkLink"), self.generation, self.i18n:getText("tms_startVideoTest"))
+    if not shown then InfoDialog.show(self.i18n:getText("tms_linkDialogUnavailable")) end
 end
 
-function TractorMediaScreen:onLinkEntered(text, clickOk, generation)
+function TractorMediaScreen:onLinkEntered(text, clickOk, generation, action)
     if not clickOk or not self.active or generation ~= self.generation then return end
     if self.getLocalVehicle() ~= self.vehicle or self.vehicle == nil then return end
+    if action == "videoTest" then
+        Logging.info("[TractorMediaScreen] Video test requested from media menu")
+        self:startVideoTest("auto")
+        self:showVideoFailure()
+        return
+    end
     local source, reason = TMSMediaSource.parse(text)
     if source ~= nil then self.source, self.lastInput = source, text end
     InfoDialog.show(self.i18n:getText("tms_" .. reason))
@@ -199,27 +221,39 @@ end
 
 function TractorMediaScreen:startVideoTest(format)
     if not self.active or self:refreshVehicle() == nil or self.video == nil then return false end
-    if format ~= "ogv" and format ~= "mp4" and format ~= "webm" then return false end
-    local filename = self.modDirectory .. "assets/media/test." .. format
-    if not fileExists(filename) then return false end
+    self.videoFailureShown = false
     self.pip = true
-    return self.video:start(filename, 0.25)
+    return self.videoProbe:start(format)
+end
+
+function TractorMediaScreen:stopVideoTest()
+    if self.videoProbe ~= nil then self.videoProbe:stop()
+    elseif self.video ~= nil then self.video:stop() end
+    self.videoFailureShown = false
+end
+
+function TractorMediaScreen:showVideoFailure()
+    if self.videoProbe == nil or not self.videoProbe.failed or self.videoFailureShown then return end
+    self.videoFailureShown = true
+    InfoDialog.show(self.i18n:getText("tms_nativeUnavailable") .. "\n\n" .. self.videoProbe:getFailureSummary())
 end
 
 function TractorMediaScreen:consoleVideo(format)
     if self.video == nil then return "No client video session" end
-    if format == "stop" then self.video:stop(); return "Stopped" end
-    return self:startVideoTest(format or "ogv") and "Native HUD probe started (3D video not implemented)"
+    if format == "stop" then self:stopVideoTest(); return "Stopped" end
+    return self:startVideoTest(format) and "Native HUD probe started (3D video not implemented)"
         or "No equipped local vehicle, unsupported format, missing file or native API"
 end
 
 function TractorMediaScreen:consoleStatus()
     self:refreshVehicle()
     local spec = TMSVehicle.getState(self.vehicle)
-    return string.format("TractorMediaScreen %s | equipped=%s | model=%s | native=%s | missing=%s | YouTube=unavailable | 3D video=unverified",
+    return string.format("TractorMediaScreen %s | equipped=%s | model=%s | native=%s | format=%s | missing=%s | errors=%s | YouTube=unavailable | 3D video=unverified",
         self.VERSION, tostring(spec ~= nil), tostring(spec ~= nil and spec.monitorNode ~= nil),
         self.video ~= nil and self.video.state or "disabled",
-        self.video ~= nil and table.concat(self.video:missingFunctions(), ",") or "client unavailable")
+        self.videoProbe ~= nil and tostring(self.videoProbe.format) or "none",
+        self.video ~= nil and table.concat(self.video:missingFunctions(), ",") or "client unavailable",
+        self.videoProbe ~= nil and self.videoProbe:getFailureSummary() or "none")
 end
 
 function TractorMediaScreen:consoleMount(x, y, z, rx, ry, rz)
@@ -256,7 +290,7 @@ function TractorMediaScreen:consoleNodes()
     end
     table.sort(names)
     Logging.info("[TractorMediaScreen] Candidate mappings: %s", table.concat(names, ", "))
-    return "Candidate mappings written to log.txt; current mount uses component 1"
+    return "Candidate mappings written to log.txt; mount uses the fixed interior camera parent"
 end
 
 -- Install hooks once, not on each map load. Both check the mod's active state.

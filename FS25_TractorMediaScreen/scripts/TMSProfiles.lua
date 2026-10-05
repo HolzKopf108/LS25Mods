@@ -3,9 +3,9 @@ TMSProfiles = {}
 TMSProfiles.valtraS = {
     id = "valtraS",
     filename = "data/vehicles/valtra/sseries/sseries.xml",
-    -- Provisional placement. Calibrate in FS25 before calling this release-ready.
-    position = {0.65, 2.15, 0.35},
-    rotation = {0, -20, 0},
+    -- Offset from the original indoor camera position in vehicle axes:
+    -- right (-X), below eye level (-Y), forward (+Z). Fine calibration is pending.
+    eyeOffset = {-0.42, -0.30, 0.52},
     calibrated = false
 }
 

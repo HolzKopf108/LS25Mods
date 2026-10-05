@@ -16,11 +16,12 @@ spec.loader.exec_module(builder)
 class AssetsAndPackage(unittest.TestCase):
     def test_runtime_selection(self):
         files, version = builder.runtime_files()
-        self.assertEqual(version, "0.1.0.0")
+        self.assertEqual(version, "0.1.1.0")
         self.assertIn("scripts/vehicle/TMSVehicle.lua", files)
         self.assertIn("scripts/media/TMSNativeVideo.lua", files)
+        self.assertIn("assets/gui/TMSLinkDialog.xml", files)
         self.assertFalse(any(name.startswith(("tests/", "tools/", "dist/")) for name in files))
-        self.assertFalse(any(name.endswith((".svg", ".md", ".py")) for name in files))
+        self.assertFalse(any(name.endswith((".svg", ".png", ".md", ".py")) for name in files))
 
     def test_display_geometry_and_faces(self):
         model = ET.parse(MOD / "assets/monitor/monitor.i3d").getroot()

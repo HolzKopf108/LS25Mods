@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Linus</author>
-    <version>0.1.0.0</version>
+    <version>0.1.1.0</version>
     <title>
         <en>Tractor Media Screen - Prototype</en>
         <de>Tractor Media Screen - Prototyp</de>
@@ -19,6 +19,8 @@
         <sourceFile filename="scripts/TMSProfiles.lua"/>
         <sourceFile filename="scripts/media/TMSMediaSource.lua"/>
         <sourceFile filename="scripts/media/TMSNativeVideo.lua"/>
+        <sourceFile filename="scripts/media/TMSVideoProbe.lua"/>
+        <sourceFile filename="scripts/gui/TMSLinkDialog.lua"/>
         <sourceFile filename="scripts/vehicle/TMSConfiguration.lua"/>
         <sourceFile filename="scripts/TractorMediaScreen.lua"/>
     </extraSourceFiles>
@@ -44,13 +46,17 @@
         <text name="tms_with"><en>With monitor (prototype)</en><de>Mit Monitor (Prototyp)</de></text>
         <text name="tms_patternTest"><en>Tractor Media Screen - test pattern</en><de>Tractor Media Screen - Testbild</de></text>
         <text name="tms_videoTest"><en>HUD video test - no cab video yet</en><de>HUD-Videotest - noch kein Video in der Kabine</de></text>
-        <text name="tms_menuTitle"><en>Media screen - link test</en><de>Medienbildschirm - Linktest</de></text>
+        <text name="tms_videoLoading"><en>Loading test video (%s, %ds)...</en><de>Testvideo lädt (%s, %ds)...</de></text>
+        <text name="tms_videoFailed"><en>Test video failed - see message and log.txt</en><de>Testvideo fehlgeschlagen - siehe Meldung und log.txt</de></text>
+        <text name="tms_menuTitle"><en>Media screen</en><de>Medienbildschirm</de></text>
         <text name="tms_linkPrompt"><en>Enter a YouTube link. Playback is not available in this prototype.</en><de>YouTube-Link eingeben. Die Wiedergabe ist in diesem Prototyp noch nicht verfügbar.</de></text>
         <text name="tms_checkLink"><en>Check link</en><de>Link prüfen</de></text>
+        <text name="tms_startVideoTest"><en>Start test video</en><de>Testvideo starten</de></text>
+        <text name="tms_linkDialogUnavailable"><en>The link menu could not be loaded. Please check log.txt.</en><de>Das Linkmenü konnte nicht geladen werden. Bitte log.txt prüfen.</de></text>
         <text name="tms_invalidLink"><en>This is not a supported video link.</en><de>Das ist kein unterstützter Videolink.</de></text>
         <text name="tms_unsupportedProvider"><en>Please enter a YouTube link. Twitch is planned as a later extension.</en><de>Bitte einen YouTube-Link eingeben. Twitch ist als spätere Erweiterung vorgesehen.</de></text>
         <text name="tms_providerUnavailable"><en>Link recognized. YouTube and Twitch playback are not yet available. The link is kept only on your client for this vehicle session.</en><de>Link erkannt. YouTube- und Twitch-Wiedergabe sind noch nicht verfügbar. Der Link bleibt nur auf deinem Client für diese Fahrzeugsitzung gespeichert.</de></text>
         <text name="tms_monitorUnavailable"><en>The monitor has not loaded or the test texture could not be applied. Please check log.txt.</en><de>Der Monitor ist noch nicht geladen oder das Testbild konnte nicht gesetzt werden. Bitte log.txt prüfen.</de></text>
-        <text name="tms_nativeUnavailable"><en>The native video test could not start. Please check log.txt.</en><de>Der native Videotest konnte nicht starten. Bitte log.txt prüfen.</de></text>
+        <text name="tms_nativeUnavailable"><en>The test video could not play. Details are listed below and in log.txt. Ctrl + Shift + 0 retries the test.</en><de>Das Testvideo konnte nicht abgespielt werden. Details stehen unten und in log.txt. Strg + Shift + 0 startet einen neuen Versuch.</de></text>
     </l10n>
 </modDesc>

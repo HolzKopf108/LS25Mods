@@ -8,6 +8,7 @@ MOD = Path(__file__).resolve().parents[1]
 ALLOWED = {
     "scripts": {".lua"},
     "assets": {".i3d", ".dds", ".ogv", ".mp4", ".webm"},
+    "assets/gui": {".xml"},
 }
 
 
@@ -31,7 +32,7 @@ def runtime_files(mod=MOD):
             raise ValueError(f"Missing or unsafe runtime file: {name}")
     required = {"assets/monitor/monitor.i3d", "assets/monitor/black.dds",
                 "assets/monitor/testPattern.dds", "assets/media/test.ogv",
-                "assets/media/test.mp4", "assets/media/test.webm"}
+                "assets/media/test.mp4", "assets/media/test.webm", "assets/gui/TMSLinkDialog.xml"}
     if not required.issubset(files):
         raise ValueError(f"Run the asset generators first: missing {sorted(required-files)}")
     # The model's file references must stay inside and be included in the ZIP.

@@ -16,9 +16,10 @@ def main():
         sys.path.insert(0, str(args.python_deps))
     from lupa import lua51, lua54
     for module in (lua51, lua54):
-        lua = module.LuaRuntime(unpack_returned_tuples=True)
-        lua.globals().TEST_SCRIPT = (MOD / "tests/tractor_media_screen_spec.lua").as_posix()
-        lua.execute("dofile(TEST_SCRIPT)")
+        for script in sorted((MOD / "tests").glob("*_spec.lua")):
+            lua = module.LuaRuntime(unpack_returned_tuples=True)
+            lua.globals().TEST_SCRIPT = script.as_posix()
+            lua.execute("dofile(TEST_SCRIPT)")
     if args.mod_schema or args.i3d_schema:
         from lxml import etree
         for schema, document in ((args.mod_schema, MOD / "modDesc.xml"),
