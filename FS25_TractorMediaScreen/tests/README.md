@@ -11,6 +11,7 @@ lua FS25_TractorMediaScreen/tests/cabin_mount_spec.lua
 lua FS25_TractorMediaScreen/tests/cabin_video_spec.lua
 lua FS25_TractorMediaScreen/tests/link_dialog_spec.lua
 lua FS25_TractorMediaScreen/tests/native_video_spec.lua
+lua FS25_TractorMediaScreen/tests/runtime_api_report_spec.lua
 ```
 
 Im Mod-Ordner funktionieren entsprechend `python -m unittest discover -s tests -p "test_*.py" -v` und `lua tests/tractor_media_screen_spec.lua` sowie die übrigen Lua-Specs.
@@ -26,7 +27,7 @@ python tools/check_project.py --python-deps <Testverzeichnis> --mod-schema <modD
 
 Die Platzhalter durch echte Pfade ersetzen. Die beiden XSD-Dateien aus den offiziellen, in der Mod-README verlinkten Quellen beziehen. Keine Testbibliotheken werden ins Mod-ZIP gepackt.
 
-Stand 06.10.2026, Version 0.1.3.0: 207 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (95 Integration, 21 Montage, 20 Kabinenclip, 41 Dialog, 30 Decoder). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und I3D gegen die offiziellen Schemas validiert. Das ist kein Spieltest.
+Stand 06.10.2026, Version 0.1.4.0: 231 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (98 Integration, 21 Montage, 20 Kabinenclip, 41 Dialog, 30 Decoder, 21 Laufzeitinventur). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und I3D gegen die offiziellen Schemas validiert. Das ist kein Spieltest der Diagnoseversion.
 
 ## Auswertung des ersten FS25-Laufs
 
@@ -42,13 +43,25 @@ Vier Eingabeaktionen sind registriert, aber kein Video-Hotkey-Callback wurde pro
 
 ## Dritter Benutzertest mit 0.1.2.0
 
-Das aktuelle `local/log.txt` stammt vom 06.10.2026 mit FS25 1.24.0.0, ModDesc-Unterstützung 114 und Mod-Version 0.1.2.0. Es enthält OGV-Wiedergabe, die Kabinenframes und erfolgreiche Video-Hotkey-Callbacks. Der Benutzer bestätigt Kabinenbild, PiP-Umschaltung und Strg + Shift + V. Beanstandet sind das automatische PiP beim Videostart und fehlender Ton.
+Das inzwischen ersetzte dritte Protokoll stammt vom 06.10.2026 mit FS25 1.24.0.0, ModDesc-Unterstützung 114 und Mod-Version 0.1.2.0. Es enthält OGV-Wiedergabe, die Kabinenframes und erfolgreiche Video-Hotkey-Callbacks. Der Benutzer bestätigt Kabinenbild, PiP-Umschaltung und Strg + Shift + V. Beanstandet sind das automatische PiP beim Videostart und fehlender Ton.
 
 5.755 Warnungen betreffen `non-power-of-two dimensions` der Kabinenframes mit 256 x 144 Pixeln. Diese Dateien wurden auf 256 x 256 mit vollständigen Mipmaps umgestellt; die Monitorgeometrie bleibt 16:9. Die vorhandene OGV-Tonspur lag vor der Korrektur bei etwa -41,6 dBFS Mittelwert und -37,7 dBFS Spitze, zusätzlich zum Playerfaktor 0,25. Nach der Anhebung um 24 dB liegen die gemessenen Werte bei etwa -17,6/-13,1 dBFS. Die Videostreams wurden unverändert kopiert und mit identischen decodierten Videohashes überprüft. Der Playerfaktor ist jetzt 1,0. Das Log zeigt außerdem eine Hauptlautstärke von 10 %; der Mod ändert diese nicht. Noch ist nicht bewiesen, ob allein der Pegel die fehlende Tonausgabe erklärt.
 
-## Nächster FS25-Lauf mit 0.1.3.0
+## Vierter Benutzertest mit 0.1.3.0
 
-1. ZIP ersetzen, Testspielstand und Mod-Version 0.1.3.0 verwenden. In `log.txt` auf die Ladezeile und Lua-Fehler achten. Die funktionierende Belegung Strg links + Shift links + V beibehalten.
+Das aktuelle `local/log.txt` stammt vom 06.10.2026, etwa 17:57 bis 18:05 Uhr, unter FS25 1.24.0.0. Der Benutzer bestätigt den optionalen PiP-Start und den passenden Testton. Das Log zeigt `volume=1.00`, laufende OGV-Proben und vorbereitete Kabinenbilder mit 256 x 256. Es enthält keine der vorherigen Kabinentextur-Warnungen. Die veraltete Mod-Meldung betrifft `FS25_MovePlaceables`; kein entsprechender Fehler von TractorMediaScreen.
+
+## Nächster Diagnoseversuch mit 0.1.4.0
+
+1. Das neue ZIP installieren und einen Spielstand mit aktiviertem Mod laden. Es genügt, bis zum spielbaren Zustand zu warten; kein Fahrzeugkauf und kein Videostart nötig.
+2. In `log.txt` die Ladeversion 0.1.4.0 und die Zeilen `[TractorMediaScreen] API inventory begin`, `names`, `controls` und `end` prüfen. Automatisch darf genau ein zusammengehöriger Block pro Kartenladung erscheinen. Bei einem Fehler steht dort stattdessen `API inventory failed`.
+3. Das neue Log nach `tests/local/log.txt` kopieren. Der bereits vorhandene SDK-Bericht muss nicht erneut erzeugt werden. Optional wiederholt `tmsApi` die Diagnose in einer bereits eingeschalteten Konsole.
+
+Die Inventur ruft keine entdeckten Funktionen auf und liefert keine Signaturen. Sie liest nur Namen aus erreichbaren Tabellen und meldet Grenzen bzw. bekannte Kontrollfunktionen, die über die Tabellen nicht erfasst wurden. Ein unvollständiger Bericht beweist keine fehlende Fähigkeit. Ebenso wäre ein passender Funktionsname allein noch kein Nachweis für Videotransfer. Dedicated Server führen diese Clientdiagnose nicht aus.
+
+## Wiedergabe bei späteren Änderungen erneut prüfen
+
+1. ZIP ersetzen und die zu prüfende Version in der Mod-Liste kontrollieren. In `log.txt` auf die Ladezeile und Lua-Fehler achten. Die funktionierende Belegung Strg links + Shift links + V beibehalten.
 2. Frisch in den ausgerüsteten Valtra einsteigen und mit Strg + Shift + V starten. Erwartet: Kabinenclip läuft, **PiP bleibt aus**. Der 440-Hz-Prüfton sollte hörbar sein und am Ende jeder sechssekündigen Schleife kurz ausblenden. Im Log muss der Formatversuch `volume=1.00` enthalten. Falls es still bleibt, zusätzlich mit laufendem PiP vergleichen und im Spiel Vordergrund/Fokus, hörbare andere Spieltöne und verwendetes Ausgabegerät festhalten.
 3. Mit Strg + Shift + 8 PiP einblenden, wieder ausblenden und beim laufenden Video die Kamera wechseln. Kabinenbild und Ton müssen weiterlaufen, ohne Neustart, Zeitsprung oder zweiten Ton. Die Beschriftung nennt die Kabinenausgabe jetzt Einzelbildfolge. Kabinenclip: 15 fps; natives HUD: 30 fps.
 4. Bei ausgeblendetem PiP stoppen und per Taste erneut starten. PiP muss aus bleiben. Dasselbe über Strg + Shift + 7 und **Testvideo starten** prüfen. Wurde PiP bewusst eingeschaltet, bleibt es beim Neustart innerhalb derselben Fahrzeugsitzung sichtbar.
@@ -61,10 +74,12 @@ Für die nächste Auswertung das neue Spielprotokoll nach `tests/local/log.txt` 
 
 ## Installierte Video-/Material-Schnittstellen prüfen
 
-Die aktuelle Spielinstallation ist hier nicht zugänglich. Auf dem Test-PC mit Python vom Repository-Stamm aus ausführen:
+Der Bericht `local/video_api_report.json` wurde bereits bereitgestellt. Er enthält 819 SDK-Funktionen und 35 passende Signaturen, aber nicht einmal die nachweislich funktionierenden `createVideoOverlay`-Aufrufe. Der Filter schließt Videofunktionen ein; erneuter Export derselben SDK-Datei bringt daher keine zusätzliche Abdeckung. Die neue Laufzeitinventur ergänzt diese unvollständige Dokumentation.
+
+Für spätere Vergleiche nach einer Spielaktualisierung bleibt der ursprüngliche Befehl verfügbar:
 
 ```powershell
 python FS25_TractorMediaScreen/tools/inspect_fs25_video_api.py --game-root "E:\SteamLibrary\steamapps\common\Farming Simulator 25"
 ```
 
-Das liest die von der offiziellen GIANTS-IDE verwendete Datei `sdk/debugger/scriptBinding.xml` und schreibt ausgewählte Signaturen nach `tests/local/video_api_report.json`. Diesen Bericht zusammen mit der getesteten Spielversion bereitstellen. Es werden keine Spielfunktionen ausgeführt oder Spieldateien verändert. Der Parser ist mit künstlichen Testdaten und dem tatsächlichen lokalen Editor-XML geprüft; Editor 10.0.1 belegt jedoch nicht den API-Stand des FS25-1.24-Clients. Falls die SDK-Datei fehlt, die Meldung festhalten. Das Werkzeug rät dann keine Ersatzsignaturen.
+Das liest die von der offiziellen GIANTS-IDE verwendete Datei `sdk/debugger/scriptBinding.xml` und schreibt ausgewählte Signaturen nach `tests/local/video_api_report.json`. Es werden keine Spielfunktionen ausgeführt oder Spieldateien verändert. Der Parser ist mit künstlichen Testdaten und dem tatsächlichen lokalen Editor-XML geprüft; Editor 10.0.1 belegt jedoch nicht den API-Stand des FS25-1.24-Clients. Falls die SDK-Datei fehlt, die Meldung festhalten. Das Werkzeug rät dann keine Ersatzsignaturen.

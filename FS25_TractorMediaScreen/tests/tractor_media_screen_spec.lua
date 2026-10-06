@@ -11,6 +11,7 @@ load("scripts/TMSProfiles.lua")
 load("scripts/media/TMSMediaSource.lua")
 load("scripts/media/TMSNativeVideo.lua")
 load("scripts/media/TMSVideoProbe.lua")
+load("scripts/media/TMSRuntimeApiReport.lua")
 load("scripts/media/TMSCabinClipData.lua")
 load("scripts/media/TMSCabinVideo.lua")
 
@@ -208,8 +209,14 @@ TMSVehicle.setTestPattern(v1, false)
 check(edits[1].shared == false and edits[2].shared == true, "Clone once, then edit isolated material")
 
 g_localPlayer = {isOwner = true, getCurrentVehicle = function() return v1 end}
+local apiCaptures, originalCapture = 0, TMSRuntimeApiReport.capture
+TMSRuntimeApiReport.capture = function(...)
+    apiCaptures = apiCaptures + 1
+    return originalCapture(...)
+end
 TractorMediaScreen:loadMap()
 TractorMediaScreen:update(16)
+check(apiCaptures == 1 and commands.tmsApi, "Client collects runtime function names once at map load")
 local input = {player = g_localPlayer}
 TractorMediaScreen.registerActionEvents(input, "VEHICLE")
 check(bindings == 4, "Four local bindings")
@@ -292,6 +299,7 @@ check(not TractorMediaScreen.canHandle(input, 1), "Menus block driving hotkeys")
 g_gui.getIsGuiVisible = function() return false end
 TractorMediaScreen:deleteMap()
 check(next(commands) == nil, "Map cleanup unregisters console commands")
+check(apiCaptures == 1, "Video starts, menus and vehicle changes do not repeat the API inventory")
 
 g_dedicatedServer = {}
 local beforeOverlay = overlays
@@ -301,6 +309,7 @@ local serverVehicle = makeVehicle()
 check(serverVehicle.pending == nil, "Dedicated server does not load visual I3D")
 check(overlays == beforeOverlay and bindings == beforeBind and not TractorMediaScreen.active,
     "Dedicated server creates neither player inputs nor video/HUD")
+check(apiCaptures == 1 and commands.tmsApi == nil, "Dedicated server skips client API inventory")
 TractorMediaScreen:deleteMap()
 g_dedicatedServer = nil
 TMSVehicle.onDelete(v1); TMSVehicle.onDelete(v1)

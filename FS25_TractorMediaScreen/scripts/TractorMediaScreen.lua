@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.3.0",
+    VERSION = "0.1.4.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -53,6 +53,8 @@ function TractorMediaScreen:loadMap()
     addConsoleCommand("tmsMount", "Monitor position: x y z rx ry rz (meters/degrees)", "consoleMount", self)
     addConsoleCommand("tmsNodes", "List candidate cabin mappings", "consoleNodes", self)
     addConsoleCommand("tmsVideo", "Test native HUD video: auto, mp4, ogv, webm or stop", "consoleVideo", self)
+    addConsoleCommand("tmsApi", "List visible media/render function names without calling them", "consoleApi", self)
+    self:consoleApi()
 end
 
 function TractorMediaScreen:deleteMap()
@@ -61,7 +63,7 @@ function TractorMediaScreen:deleteMap()
     if self.overlay ~= nil and self.overlay ~= 0 then delete(self.overlay) end
     self.overlay, self.video, self.videoProbe, self.cabinVideo = nil, nil, nil, nil
     if self.active then
-        for _, name in ipairs({"tmsStatus", "tmsMount", "tmsNodes", "tmsVideo"}) do
+        for _, name in ipairs({"tmsStatus", "tmsMount", "tmsNodes", "tmsVideo", "tmsApi"}) do
             removeConsoleCommand(name)
         end
     end
@@ -251,6 +253,21 @@ function TractorMediaScreen:consoleVideo(format)
     if format == "stop" then self:stopVideoTest(); return "Stopped" end
     return self:startVideoTest(format) and "Test started; prepared cabin frames are available for OGV only"
         or "No equipped local vehicle, unsupported format, missing file or native API"
+end
+
+function TractorMediaScreen:consoleApi()
+    if not self.active then return "No client session" end
+    -- The SDK omits functions that already work in the player's game.
+    -- Inspect visible names only; never guess a native call or handle type.
+    local ok, result = pcall(function()
+        local report = TMSRuntimeApiReport.capture()
+        TMSRuntimeApiReport.write(report, function(line) Logging.info("%s", line) end)
+    end)
+    if not ok then
+        Logging.warning("[TractorMediaScreen] API inventory failed: %s", tostring(result))
+        return "Runtime API inventory failed; see log.txt"
+    end
+    return "Visible function names written to log.txt; no video-to-material support inferred"
 end
 
 function TractorMediaScreen:consoleStatus()

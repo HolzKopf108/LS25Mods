@@ -16,9 +16,10 @@ spec.loader.exec_module(builder)
 class AssetsAndPackage(unittest.TestCase):
     def test_runtime_selection(self):
         files, version = builder.runtime_files()
-        self.assertEqual(version, "0.1.3.0")
+        self.assertEqual(version, "0.1.4.0")
         self.assertIn("scripts/vehicle/TMSVehicle.lua", files)
         self.assertIn("scripts/media/TMSNativeVideo.lua", files)
+        self.assertIn("scripts/media/TMSRuntimeApiReport.lua", files)
         self.assertIn("scripts/media/TMSCabinVideo.lua", files)
         self.assertIn("scripts/media/TMSCabinClipData.lua", files)
         self.assertEqual(len([name for name in files if name.startswith("assets/media/cabinTest/")]), 90)
