@@ -5,14 +5,15 @@
 Vom Repository-Stamm:
 
 ```powershell
-python -m unittest discover -s FS25_TractorMediaScreen/tests -p test_build.py -v
+python -m unittest discover -s FS25_TractorMediaScreen/tests -p "test_*.py" -v
 lua FS25_TractorMediaScreen/tests/tractor_media_screen_spec.lua
 lua FS25_TractorMediaScreen/tests/cabin_mount_spec.lua
+lua FS25_TractorMediaScreen/tests/cabin_video_spec.lua
 lua FS25_TractorMediaScreen/tests/link_dialog_spec.lua
 lua FS25_TractorMediaScreen/tests/native_video_spec.lua
 ```
 
-Im Mod-Ordner funktionieren entsprechend `python -m unittest discover -s tests -p test_build.py -v` und `lua tests/tractor_media_screen_spec.lua`.
+Im Mod-Ordner funktionieren entsprechend `python -m unittest discover -s tests -p "test_*.py" -v` und `lua tests/tractor_media_screen_spec.lua` sowie die übrigen Lua-Specs.
 
 Die Lua-Prüfungen behandeln Linkauswertung, Decoderbereitschaft, Zeitbegrenzung, Ende/Fehler/Freigabe, Shop-Kennungen, gezielte Fahrzeugauswahl, eigene Materialinstanzen, lokale Eingaben, veraltete Dialogantworten, Fahrzeugwechsel, asynchrones Löschen und Dedicated Server. Die Spielobjekte sind nachgebildet. Echte FS25-APIs wurden getrennt anhand der in der Mod-README verlinkten Primärquellen abgeglichen.
 
@@ -25,23 +26,29 @@ python tools/check_project.py --python-deps <Testverzeichnis> --mod-schema <modD
 
 Die Platzhalter durch echte Pfade ersetzen. Die beiden XSD-Dateien aus den offiziellen, in der Mod-README verlinkten Quellen beziehen. Keine Testbibliotheken werden ins Mod-ZIP gepackt.
 
-Stand 05.10.2026, Version 0.1.1.0: 174 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (82 Integration, 21 Montage, 41 Dialog, 30 Decoder). Vier Python-Prüfungen für Geometrie/Flächenorientierung, komprimierte DDS samt Mipmaps, Dateiauswahl und exakte ZIP-/Quellgleichheit bestanden. Manifest und I3D gegen die offiziellen Schemas validiert. Das ist kein Spieltest.
+Stand 06.10.2026, Version 0.1.2.0: 200 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (88 Integration, 21 Montage, 20 Kabinenclip, 41 Dialog, 30 Decoder). Acht Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit sowie Quellvideo-/Framehashes bestanden. Manifest und I3D gegen die offiziellen Schemas validiert. Das ist kein Spieltest.
 
 ## Auswertung des ersten FS25-Laufs
 
 Der Benutzer bestätigt für 0.1.0.0 Shop-Konfiguration, Testbild auf der 3D-Fläche und Bild-in-Bild. Falsch waren der Montageort links auf dem Tank, Wortfilterung von YouTube und die zu niedrige HUD-Position. Strg + Shift + 0 blieb ohne erkennbare Wirkung.
 
-`local/log.txt` vom 05.10.2026 gehört zu FS25 1.24.0.0, ModDesc-Unterstützung 114. Es enthält die aktivierte Mod-Version 0.1.0.0, vier registrierte Aktionen, erfolgreich geladenes I3D und keine fehlenden Videofunktionen. Die Wortfilter-Meldung ist enthalten, ein Video-Zustandswechsel oder Decoderfehler dagegen nicht. Der erste Lauf belegt weder erfolgreiche Videowiedergabe noch eine bestimmte Decoderfehlerursache.
+Der damals bereitgestellte erste Lauf mit FS25 1.24.0.0 und ModDesc-Unterstützung 114 bestätigte die Wortfilter-Meldung. Dieses Protokoll wurde vom Benutzer inzwischen durch den nächsten Lauf ersetzt.
 
-## Nächster FS25-Lauf mit 0.1.1.0
+## Zweiter Benutzertest mit 0.1.1.0
 
-1. Testspielstand und Mod-Version 0.1.1.0 verwenden. In `log.txt` auf die Ladezeile und Lua-Fehler achten.
-2. Basisspiel-Valtra im Shop mit/ohne Monitor vergleichen. Kaufen, Mieten, Werkstattumbau und bestehende Ausstattungen prüfen.
-3. Monitor rechts im Innenraum prüfen. Der neue feste Anker stammt vom ursprünglichen Innenkamerapunkt. Umsehen, Kamerawechsel und Fahrbahnunebenheiten dürfen den Monitor nicht von der Kabine lösen. Feinposition mit `tmsMount` prüfen/kalibrieren und bei Bedarf `tmsNodes` protokollieren.
-4. Testbild auf 3D-Fläche und im höher sitzenden HUD ansehen. Blickwinkel, Verdeckung, Innen-/Außenkamera, Tag/Nacht und Abstand zur Drehzahl-/Geschwindigkeitsanzeige prüfen. Strg + Shift + 7: vollständigen YouTube-Link einfügen, Eingabefeld verlassen, **Link prüfen** anklicken. Erwartet wird **Link erkannt**, keine veränderte Schreibweise von youtube und noch kein Onlinevideo.
-5. Im selben Medienmenü **Testvideo starten** klicken. Alternativ Strg + Shift + 0. Erwartet wird sofort die HUD-Testanzeige mit Ladeformat/Wartezeit, danach ein bewegter Film mit leisem Prüfton oder eine konkrete Fehlermeldung. Automatisch werden MP4, OGV und WebM versucht, jeweils mit 15 s Lade- und maximal 5 s Startwartezeit. Währenddessen kein weiteres Menü öffnen. Der sechssekündige Film wiederholt sich bis zum Stoppen. Einzeltests sind über `tmsVideo mp4`, `tmsVideo ogv` und `tmsVideo webm` möglich. Bildschirm in der Kabine zeigt weiterhin nur schwarz oder statisches Testbild.
-6. Bei Aussteigen, Fahrzeugwechsel, Menüöffnung und Mapende dürfen weder Video noch Ton weiterlaufen. Zwei Monitore auf demselben Client dürfen ihre Materialien nicht gegenseitig ändern.
-7. Speichern/Laden: Einbau bleibt erhalten, kein automatischer Start persönlicher Medien. Verkauf und Löschen während einer Ladeoperation prüfen.
-8. Zwei Clients und Dedicated Server: Ausstattung sichtbar, fremder Monitor schwarz, fremder Ton stumm. Fahrzeugübernahme, späterer Beitritt und zwei ausgerüstete Traktoren prüfen.
+`local/log.txt` beginnt am 05.10.2026 um 23:51 Uhr und endet am 06.10.2026, weiterhin FS25 1.24.0.0. `VideoOverlay, failed to load ...test.mp4` mit anschließendem `startTimeout` belegt den MP4-Fehler auf diesem PC. Danach folgt mehrfach `Video ogv: playing`. Der Benutzer bestätigt das bewegte HUD-Bild, die Monitorposition, den Linkdialog und die höhere PiP-Position. Hörbarer Prüfton wurde nicht gesondert bestätigt.
 
-Für die nächste Auswertung das neue Spielprotokoll nach `tests/local/log.txt` kopieren und Bild/Ton oder Fehlermeldung festhalten. Tests auf einem anderen PC sind weiterhin möglich. Modellvorschau, Schema und simulierte Tests bestätigen weder neuen Montageort noch Video, Ton oder Multiplayer im laufenden FS25.
+Vier Eingabeaktionen sind registriert, aber kein Video-Hotkey-Callback wurde protokolliert. Video startet ausschließlich über das Menü. Der konkrete Konflikt von Strg + Shift + 0 bleibt unbekannt; das ist kein Decoderfehler.
+
+## Nächster FS25-Lauf mit 0.1.2.0
+
+1. ZIP ersetzen, Testspielstand und Mod-Version 0.1.2.0 verwenden. In `log.txt` auf die Ladezeile und Lua-Fehler achten.
+2. Im Steuerungsmenü **Medienbildschirm: Testvideo starten/stoppen** gezielt auf **Strg links + Shift links + V** legen. Bestehende Profile können noch die alte 0-Belegung enthalten. Andere Steuerungen nicht zurücksetzen.
+3. Im ausgerüsteten Valtra über Strg + Shift + 7 und **Testvideo starten** beginnen. Erwartet: OGV startet zuerst; HUD und Kabinenfläche zeigen denselben sechssekündigen Clip. Der Kabinentest hat 15 fps, das native HUD 30 fps. Bewegungsrichtung, Ausrichtung, Seitenverhältnis, Schleifen und wahrnehmbaren Zeitversatz vergleichen. Leisen Prüfton kontrollieren.
+4. Beim Umsehen prüfen, dass das Bild auf der Monitorfläche liegt, perspektivisch mitdreht und von Kabinenteilen verdeckt wird. Danach PiP mit Strg + Shift + 8 ausblenden: Kabinenbild und derselbe Ton müssen weiterlaufen. Wieder einblenden und auf Zeitsprung oder doppelten Ton achten. Innen-/Außenkamera wechseln.
+5. Mit Strg + Shift + V stoppen und neu starten. Im Log müssen `Video hotkey received`, `Video ogv: playing` und `Cabin clip active: prepared OGV frames` auftauchen. Ohne diese Zeilen per Menü starten und bei Bedarf `tmsStatus` prüfen: `cabin=frames`, Decoderzeit und Bildnummer. Eine Erfolgsmeldung belegt noch keine sichtbare Synchronität.
+6. Aussteigen, Fahrzeugwechsel, Menüöffnung und Mapende stoppen Film und Ton. Das vorherige Schwarz-/Testbild wird wiederhergestellt; nach Aussteigen bleibt der verlassene Monitor schwarz. Strg + Shift + 9 stoppt den Film und schaltet das statische Testbild. Zwei Monitore dürfen ihre Materialien nicht gegenseitig ändern.
+7. Mehrere Minuten laufen lassen, Ruckler beim ersten Durchlauf und späteren Schleifen sowie Speicherbedarf beobachten. Die vorbereiteten 90 DDS-Dateien sind ein begrenzter Test und kein Streamingdecoder. `tmsVideo webm` und `tmsVideo mp4` bleiben reine HUD-Codecproben, ohne Kabinenframes.
+8. Bestehende Shop-/Savegame-Funktionen und anschließend Multiplayer mit zwei Clients/Dedicated Server prüfen: fremder Monitor schwarz, fremder Ton stumm, kein automatischer Start beim Laden oder Fahrzeugübernehmen.
+
+Für die nächste Auswertung das neue Spielprotokoll nach `tests/local/log.txt` kopieren und Kabinenbild, Ton, Synchronität sowie Shortcut-Ergebnis festhalten. Tests auf einem anderen PC sind weiterhin möglich. Ein erfolgreicher Test mit vorbereiteten Frames bestätigt noch keinen Weg für beliebige Videos oder YouTube.

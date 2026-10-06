@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Linus</author>
-    <version>0.1.1.0</version>
+    <version>0.1.2.0</version>
     <title>
         <en>Tractor Media Screen - Prototype</en>
         <de>Tractor Media Screen - Prototyp</de>
     </title>
     <description>
-        <en><![CDATA[Development prototype for a configurable cab monitor on the base-game Valtra S Series. Includes a local test pattern, picture-in-picture and native HUD video diagnostics. YouTube and Twitch playback are not implemented. The monitor position needs in-game calibration. Each player's media stays local.]]></en>
-        <de><![CDATA[Entwicklungsprototyp für einen konfigurierbaren Kabinenmonitor der Basisspiel-Valtra S-Serie. Enthält ein lokales Testbild, Bild-in-Bild und Tests der nativen HUD-Videowiedergabe. YouTube- und Twitch-Wiedergabe sind noch nicht implementiert. Die Monitorposition muss im Spiel kalibriert werden. Medien bleiben pro Spieler lokal.]]></de>
+        <en><![CDATA[Development prototype for a configurable cab monitor on the base-game Valtra S Series. Includes a local test pattern and a bundled test clip for the cab monitor and picture-in-picture. Cab playback uses prepared frames of this clip only. YouTube and Twitch playback are not implemented. Each player's media stays local.]]></en>
+        <de><![CDATA[Entwicklungsprototyp für einen konfigurierbaren Kabinenmonitor der Basisspiel-Valtra S-Serie. Enthält ein lokales Testbild und einen mitgelieferten Testfilm für Kabinenmonitor und Bild-in-Bild. Die Kabinenwiedergabe nutzt nur vorbereitete Bilder dieses Clips. YouTube- und Twitch-Wiedergabe sind noch nicht implementiert. Medien bleiben pro Spieler lokal.]]></de>
     </description>
     <iconFilename>icon.dds</iconFilename>
     <multiplayer supported="true"/>
@@ -20,6 +20,8 @@
         <sourceFile filename="scripts/media/TMSMediaSource.lua"/>
         <sourceFile filename="scripts/media/TMSNativeVideo.lua"/>
         <sourceFile filename="scripts/media/TMSVideoProbe.lua"/>
+        <sourceFile filename="scripts/media/TMSCabinClipData.lua"/>
+        <sourceFile filename="scripts/media/TMSCabinVideo.lua"/>
         <sourceFile filename="scripts/gui/TMSLinkDialog.lua"/>
         <sourceFile filename="scripts/vehicle/TMSConfiguration.lua"/>
         <sourceFile filename="scripts/TractorMediaScreen.lua"/>
@@ -34,18 +36,19 @@
         <actionBinding action="TMS25_MENU"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_7" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
         <actionBinding action="TMS25_PIP"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_8" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
         <actionBinding action="TMS25_PATTERN"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_9" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
-        <actionBinding action="TMS25_VIDEO_TEST"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_0" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
+        <actionBinding action="TMS25_VIDEO_TEST"><binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_lshift KEY_v" axisComponent="+" neutralInput="0" index="1"/></actionBinding>
     </inputBinding>
     <l10n>
         <text name="input_TMS25_MENU"><en>Media screen: enter link</en><de>Medienbildschirm: Link eingeben</de></text>
         <text name="input_TMS25_PIP"><en>Media screen: picture-in-picture</en><de>Medienbildschirm: Bild-in-Bild</de></text>
         <text name="input_TMS25_PATTERN"><en>Media screen: cab test pattern</en><de>Medienbildschirm: Kabinen-Testbild</de></text>
-        <text name="input_TMS25_VIDEO_TEST"><en>Media screen: start/stop HUD video test</en><de>Medienbildschirm: HUD-Videotest starten/stoppen</de></text>
+        <text name="input_TMS25_VIDEO_TEST"><en>Media screen: start/stop test video</en><de>Medienbildschirm: Testvideo starten/stoppen</de></text>
         <text name="tms_configuration"><en>Media screen</en><de>Medienbildschirm</de></text>
         <text name="tms_without"><en>Without monitor</en><de>Ohne Monitor</de></text>
         <text name="tms_with"><en>With monitor (prototype)</en><de>Mit Monitor (Prototyp)</de></text>
         <text name="tms_patternTest"><en>Tractor Media Screen - test pattern</en><de>Tractor Media Screen - Testbild</de></text>
-        <text name="tms_videoTest"><en>HUD video test - no cab video yet</en><de>HUD-Videotest - noch kein Video in der Kabine</de></text>
+        <text name="tms_videoTest"><en>Test video - cabin and picture-in-picture</en><de>Testvideo - Kabine und Bild-in-Bild</de></text>
+        <text name="tms_hudOnlyVideoTest"><en>Test video - HUD only; see log for cabin status</en><de>Testvideo - nur HUD; Kabinenstatus siehe Log</de></text>
         <text name="tms_videoLoading"><en>Loading test video (%s, %ds)...</en><de>Testvideo lädt (%s, %ds)...</de></text>
         <text name="tms_videoFailed"><en>Test video failed - see message and log.txt</en><de>Testvideo fehlgeschlagen - siehe Meldung und log.txt</de></text>
         <text name="tms_menuTitle"><en>Media screen</en><de>Medienbildschirm</de></text>
@@ -57,6 +60,6 @@
         <text name="tms_unsupportedProvider"><en>Please enter a YouTube link. Twitch is planned as a later extension.</en><de>Bitte einen YouTube-Link eingeben. Twitch ist als spätere Erweiterung vorgesehen.</de></text>
         <text name="tms_providerUnavailable"><en>Link recognized. YouTube and Twitch playback are not yet available. The link is kept only on your client for this vehicle session.</en><de>Link erkannt. YouTube- und Twitch-Wiedergabe sind noch nicht verfügbar. Der Link bleibt nur auf deinem Client für diese Fahrzeugsitzung gespeichert.</de></text>
         <text name="tms_monitorUnavailable"><en>The monitor has not loaded or the test texture could not be applied. Please check log.txt.</en><de>Der Monitor ist noch nicht geladen oder das Testbild konnte nicht gesetzt werden. Bitte log.txt prüfen.</de></text>
-        <text name="tms_nativeUnavailable"><en>The test video could not play. Details are listed below and in log.txt. Ctrl + Shift + 0 retries the test.</en><de>Das Testvideo konnte nicht abgespielt werden. Details stehen unten und in log.txt. Strg + Shift + 0 startet einen neuen Versuch.</de></text>
+        <text name="tms_nativeUnavailable"><en>The test video could not play. Details are listed below and in log.txt. Retry via the media menu or the assigned video shortcut.</en><de>Das Testvideo konnte nicht abgespielt werden. Details stehen unten und in log.txt. Erneut über das Medienmenü oder die zugewiesene Videotaste versuchen.</de></text>
     </l10n>
 </modDesc>

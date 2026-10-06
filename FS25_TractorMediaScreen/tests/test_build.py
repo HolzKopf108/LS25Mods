@@ -16,9 +16,12 @@ spec.loader.exec_module(builder)
 class AssetsAndPackage(unittest.TestCase):
     def test_runtime_selection(self):
         files, version = builder.runtime_files()
-        self.assertEqual(version, "0.1.1.0")
+        self.assertEqual(version, "0.1.2.0")
         self.assertIn("scripts/vehicle/TMSVehicle.lua", files)
         self.assertIn("scripts/media/TMSNativeVideo.lua", files)
+        self.assertIn("scripts/media/TMSCabinVideo.lua", files)
+        self.assertIn("scripts/media/TMSCabinClipData.lua", files)
+        self.assertEqual(len([name for name in files if name.startswith("assets/media/cabinTest/")]), 90)
         self.assertIn("assets/gui/TMSLinkDialog.xml", files)
         self.assertFalse(any(name.startswith(("tests/", "tools/", "dist/")) for name in files))
         self.assertFalse(any(name.endswith((".svg", ".png", ".md", ".py")) for name in files))

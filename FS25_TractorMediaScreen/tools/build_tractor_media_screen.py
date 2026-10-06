@@ -1,6 +1,7 @@
 """Build only the explicit runtime assets and verify each ZIP member against source."""
 from pathlib import Path
 import hashlib
+import importlib.util
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -35,6 +36,13 @@ def runtime_files(mod=MOD):
                 "assets/media/test.mp4", "assets/media/test.webm", "assets/gui/TMSLinkDialog.xml"}
     if not required.issubset(files):
         raise ValueError(f"Run the asset generators first: missing {sorted(required-files)}")
+    # The prepared 3D clip must match the exact OGV played by the native decoder.
+    spec = importlib.util.spec_from_file_location("tms_cabin_assets", MOD / "tools/generate_cabin_clip.py")
+    cabin_assets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cabin_assets)
+    cabin_frames = cabin_assets.validate_assets(mod)
+    if not set(cabin_frames).issubset(files):
+        raise ValueError("Cab clip frames are not included in the runtime package")
     # The model's file references must stay inside and be included in the ZIP.
     for name in files:
         if name.endswith(".i3d"):

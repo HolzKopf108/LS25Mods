@@ -42,7 +42,8 @@ function TMSVideoProbe:start(format)
         return false
     end
     self:stop()
-    self.formats = (format == nil or format == "auto") and {"mp4", "ogv", "webm"} or {format}
+    -- OGV is confirmed playing in the user's FS25 1.24 test; MP4 failed there.
+    self.formats = (format == nil or format == "auto") and {"ogv", "webm", "mp4"} or {format}
     self.index, self.active = 0, true
     return self:nextFormat()
 end

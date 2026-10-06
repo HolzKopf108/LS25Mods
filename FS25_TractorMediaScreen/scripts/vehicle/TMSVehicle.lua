@@ -135,10 +135,24 @@ end
 function TMSVehicle.setTestPattern(vehicle, enabled)
     local spec = TMSVehicle.getState(vehicle)
     if spec == nil or spec.displayNode == nil or spec.deleted then return false end
-    if spec.pattern == enabled then return true end
-    if type(setMaterialDiffuseMapFromFile) ~= "function" then return false end
     local filename = TractorMediaScreen.modDirectory .. "assets/monitor/"
         .. (enabled and "testPattern.dds" or "black.dds")
+    if not TMSVehicle.setDisplayTexture(vehicle, filename) then return false end
+    spec.pattern = enabled
+    return true
+end
+
+function TMSVehicle.restoreDisplay(vehicle)
+    local spec = TMSVehicle.getState(vehicle)
+    if spec == nil then return false end
+    return TMSVehicle.setTestPattern(vehicle, spec.pattern == true)
+end
+
+function TMSVehicle.setDisplayTexture(vehicle, filename)
+    local spec = TMSVehicle.getState(vehicle)
+    if spec == nil or spec.displayNode == nil or spec.deleted then return false end
+    if spec.displayFilename == filename then return true end
+    if type(setMaterialDiffuseMapFromFile) ~= "function" then return false end
     -- The first edit clones the shared material. Subsequent edits affect only
     -- this vehicle's material, so another tractor on this client stays black.
     local ok, material = pcall(setMaterialDiffuseMapFromFile,
@@ -149,7 +163,7 @@ function TMSVehicle.setTestPattern(vehicle, enabled)
         return false
     end
     setMaterial(spec.displayNode, material, 0)
-    spec.displayMaterial, spec.pattern = material, enabled
+    spec.displayMaterial, spec.displayFilename = material, filename
     return true
 end
 
@@ -160,7 +174,7 @@ function TMSVehicle:onDelete()
     if TractorMediaScreen.vehicle == self then TractorMediaScreen:releaseSession() end
     if spec.pendingI3d ~= nil then delete(spec.pendingI3d); spec.pendingI3d = nil end
     if spec.monitorNode ~= nil then delete(spec.monitorNode); spec.monitorNode = nil end
-    spec.displayNode, spec.displayMaterial = nil, nil
+    spec.displayNode, spec.displayMaterial, spec.displayFilename = nil, nil, nil
     if spec.requestId ~= nil then
         g_i3DManager:releaseSharedI3DFile(spec.requestId)
         spec.requestId = nil

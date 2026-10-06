@@ -11,6 +11,8 @@ load("scripts/TMSProfiles.lua")
 load("scripts/media/TMSMediaSource.lua")
 load("scripts/media/TMSNativeVideo.lua")
 load("scripts/media/TMSVideoProbe.lua")
+load("scripts/media/TMSCabinClipData.lua")
+load("scripts/media/TMSCabinVideo.lua")
 
 for _, url in ipairs({"https://youtube.com/watch?v=dQw4w9WgXcQ", "youtu.be/dQw4w9WgXcQ",
     "https://www.youtube.com/shorts/dQw4w9WgXcQ?feature=share", "https://m.youtube.com/watch?a=1&v=dQw4w9WgXcQ"}) do
@@ -34,6 +36,7 @@ check(TMSProfiles.find("mydata/vehicles/valtra/sSeries/sSeries.xml") == nil, "Re
 local created, stopped, deleted, started = 0, 0, 0, 0
 local ready, playing, throwUpdate = false, false, false
 local lastLoop
+local decoderTime = 0
 local api = {
     createVideoOverlay = function(filename, looping, volume)
         check(type(looping) == "boolean" and volume == 0.25, "Explicit loop/volume settings")
@@ -42,6 +45,7 @@ local api = {
     end,
     isVideoOverlayReadyToPlay = function() return ready end,
     isVideoOverlayPlaying = function() return playing end,
+    getVideoOverlayCurrentTime = function() return decoderTime end,
     playVideoOverlay = function() started = started + 1; playing = true end,
     updateVideoOverlay = function() if throwUpdate then error("native failure") end end,
     stopVideoOverlay = function() stopped = stopped + 1; playing = false end,
@@ -194,7 +198,7 @@ function getMaterial(node) return materialByNode[node] or 5 end
 function setMaterial(node, material) materialByNode[node] = material end
 function setMaterialDiffuseMapFromFile(material, filename, wrap, srgb, shared)
     check(type(wrap) == "boolean" and srgb == true, "Real material API argument types")
-    table.insert(edits, {material = material, shared = shared})
+    table.insert(edits, {material = material, shared = shared, filename = filename})
     return shared and material or material + 100
 end
 check(TMSVehicle.setTestPattern(v1, true), "Local test pattern applied")
@@ -225,16 +229,28 @@ check(TractorMediaScreen.pip, "PiP toggles locally")
 check(TractorMediaScreen:startVideoTest("ogv"), "Local HUD probe can start")
 check(lastLoop == true, "Driver test repeats until stopped")
 local decoder = TractorMediaScreen.video.id
+ready, decoderTime = true, 1
+TractorMediaScreen:update(16)
+check(TractorMediaScreen.cabinVideo.frame == 16 and v2[specKey].displayFilename:find("frame_0016.dds", 1, true),
+    "Cabin receives frame matching the single native player's time")
 TractorMediaScreen.onPip(input, nil, 1)
-check(not TractorMediaScreen.pip and TractorMediaScreen.video.id == nil, "Hidden HUD probe stops audio")
+decoderTime = 2
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.pip and TractorMediaScreen.video.id == decoder
+    and TractorMediaScreen.cabinVideo.frame == 31, "Hiding PiP keeps one player and advances cabin video")
+TractorMediaScreen.onPip(input, nil, 1)
+check(TractorMediaScreen.video.id == decoder, "Showing PiP again does not restart or duplicate playback")
+TractorMediaScreen:stopVideoTest()
+check(v2[specKey].displayFilename:find("black.dds", 1, true) and TractorMediaScreen.video.id == nil,
+    "Stopping restores the previous black screen even when pattern flag was already false")
 ready = false
 TractorMediaScreen.onVideoTest(input, nil, 1)
-check(TractorMediaScreen.videoProbe.format == "mp4" and TractorMediaScreen.pip,
-    "Video key immediately opens PiP and starts automatic MP4 probe")
+check(TractorMediaScreen.videoProbe.format == "ogv" and TractorMediaScreen.pip,
+    "Video key starts the user-confirmed OGV format first")
 TractorMediaScreen:update(15001)
-check(TractorMediaScreen.videoProbe.format == "ogv", "Loading failure automatically tries OGV")
+check(TractorMediaScreen.videoProbe.format == "webm", "Loading failure automatically tries WebM")
 TractorMediaScreen:update(15001)
-check(TractorMediaScreen.videoProbe.format == "webm", "Second loading failure automatically tries WebM")
+check(TractorMediaScreen.videoProbe.format == "mp4", "Second loading failure automatically tries MP4")
 local messagesBefore = InfoDialog.count
 TractorMediaScreen:update(15001)
 TractorMediaScreen:update(16)
@@ -243,7 +259,7 @@ check(TractorMediaScreen.videoProbe.failed and TractorMediaScreen.video.id == ni
 check(InfoDialog.count == messagesBefore + 1 and InfoDialog.last:find("loadingTimeout", 1, true),
     "Asynchronous native failure is shown to driver exactly once with diagnostic reason")
 TractorMediaScreen.onVideoTest(input, nil, 1)
-check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "mp4",
+check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "ogv",
     "A fresh video key press can retry after failure")
 g_gui.getIsGuiVisible = function() return true end
 TractorMediaScreen:update(16)
@@ -252,7 +268,7 @@ check(not TractorMediaScreen.videoProbe.active and TractorMediaScreen.video.id =
 g_gui.getIsGuiVisible = function() return false end
 TractorMediaScreen.onMenu(input, nil, 1)
 TMSLinkDialog.pending("", true, "videoTest")
-check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "mp4",
+check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "ogv",
     "Menu button starts video without a URL or video shortcut")
 TractorMediaScreen:startVideoTest("mp4")
 g_localPlayer.getCurrentVehicle = function() return nil end

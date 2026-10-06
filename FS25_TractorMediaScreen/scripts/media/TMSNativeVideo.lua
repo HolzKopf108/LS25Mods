@@ -112,13 +112,14 @@ function TMSNativeVideo:update(dt)
         if self.state ~= "playing" then self.elapsed = 0 end
         self.state = "playing"
         if not self:call("updateVideoOverlay", self.id) then return false end
-        -- Optional FS25 VideoElement API for diagnostics only. A clock failure
-        -- must not stop an otherwise working native picture/audio stream.
+        -- Documented FS25 decoder time in seconds also drives the prepared
+        -- cabin frames. Clock failure must not stop working HUD picture/audio.
         if type(self.api.getVideoOverlayCurrentTime) == "function" and self.timingError == nil then
             local clockOk, currentTime = pcall(self.api.getVideoOverlayCurrentTime, self.id)
             if clockOk then
-                if type(currentTime) == "number" then self.currentTime = currentTime end
+                self.currentTime = type(currentTime) == "number" and currentTime or nil
             else
+                self.currentTime = nil
                 self.timingError = diagnosticText(currentTime)
             end
         end
