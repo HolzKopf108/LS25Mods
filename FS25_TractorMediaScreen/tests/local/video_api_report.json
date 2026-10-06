@@ -1,0 +1,941 @@
+{
+  "report_format": 1,
+  "source_kind": "game_sdk",
+  "binding_filename": "scriptBinding.xml",
+  "binding_sha256": "78045127fae1f9d3781a63f15bab48c698fefb417c673a313d2350c5bd443609",
+  "binding_metadata": {},
+  "all_function_count": 819,
+  "selected_function_count": 35,
+  "selection": "video|overlay|texture|render.?target|material.*map",
+  "scope": "Gefilterte Dokumentation der angegebenen Installation. Kein Laufzeitnachweis, kein Nachweis einer Video-zu-Material-Anbindung. Die Spielversion ist durch dieses XML allein nicht bestaetigt.",
+  "functions": [
+    {
+      "name": "clearOverlayArea",
+      "category": "Overlays",
+      "description": "Clears all overlays in the given area.\nOnly allowed to be called within \"draw\"",
+      "inputs": [
+        {
+          "name": "x",
+          "type": "float",
+          "desc": "x"
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "desc": "y"
+        },
+        {
+          "name": "width",
+          "type": "float",
+          "desc": "width"
+        },
+        {
+          "name": "height",
+          "type": "float",
+          "desc": "height"
+        },
+        {
+          "name": "rotation",
+          "type": "float",
+          "desc": "rotation"
+        },
+        {
+          "name": "rotCenterX",
+          "type": "float",
+          "desc": "center of rotation x"
+        },
+        {
+          "name": "rotCenterY",
+          "type": "float",
+          "desc": "center of rotation y"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "createImageOverlay",
+      "category": "Overlays",
+      "description": "Create overlay object",
+      "inputs": [
+        {
+          "name": "textureFilename",
+          "type": "string",
+          "desc": "textureFilename"
+        },
+        {
+          "name": "deferredActivation",
+          "type": "boolean?",
+          "desc": "[optional, default=false]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "imageOverlay",
+          "type": "entityId",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "createImageOverlayWithTexture",
+      "category": "Overlays",
+      "description": "Create overlay object with existing texture",
+      "inputs": [
+        {
+          "name": "textureId",
+          "type": "entityId",
+          "desc": "textureId"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "imageOverlay",
+          "type": "entityId",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getIsOverlayReady",
+      "category": "Overlays",
+      "description": "Check if an overlay is ready to use",
+      "inputs": [
+        {
+          "name": "overlay",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isReady",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getIsTextureEntityReady",
+      "category": "Rendering",
+      "description": "Check if a texture entity is ready to use",
+      "inputs": [
+        {
+          "name": "textureEntity",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isReady",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialCustomMapFilename",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "customMapName",
+          "type": "string",
+          "desc": "customMapName"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialCustomMapIsSRGB",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "customMapName",
+          "type": "string",
+          "desc": "customMapName"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isSRGB",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialDiffuseMapFilename",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": "filename"
+        }
+      ]
+    },
+    {
+      "name": "getMaterialDiffuseMapHasAlpha",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "hasAlphaChannel",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialEmissiveMapFilename",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": "filename"
+        }
+      ]
+    },
+    {
+      "name": "getMaterialEmissiveMapHasAlpha",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "hasAlphaChannel",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialGlossMapFilename",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": "filename"
+        }
+      ]
+    },
+    {
+      "name": "getMaterialHasRefractionMap",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "hasRefractionMap",
+          "type": "boolean",
+          "desc": ""
+        }
+      ]
+    },
+    {
+      "name": "getMaterialNormalMapFilename",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": "filename"
+        }
+      ]
+    },
+    {
+      "name": "getMaterialNormalMapFormat",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "normalFormat",
+          "type": "integer",
+          "desc": "format of enum NormalMapFormat"
+        }
+      ]
+    },
+    {
+      "name": "getMaterialReflectionMapScaling",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "reflectionMapScaling",
+          "type": "float",
+          "desc": "scaling of reflection map. 0 if no reflection map."
+        }
+      ]
+    },
+    {
+      "name": "getShallowWaterSimulationOutputTexture",
+      "category": "ShallowWaterSimulation",
+      "description": "Returns output texture of the simulation, which defines the total height of the water surface at every point",
+      "inputs": [
+        {
+          "name": "shallowWaterSimulation",
+          "type": "entityId",
+          "desc": "simulation/id of the shallow water sim to retrieve the texture from"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "textureId",
+          "type": "integer",
+          "desc": "id of the output texture"
+        }
+      ]
+    },
+    {
+      "name": "getShallowWaterSimulationOutputVelocityUTexture",
+      "category": "ShallowWaterSimulation",
+      "description": "Returns u (aka x) component of velocity output texture of the simulation, which defines the u component of velocity of the simulation at every point.",
+      "inputs": [
+        {
+          "name": "shallowWaterSimulation",
+          "type": "entityId",
+          "desc": "simulation/id of the shallow water sim to retrieve the texture from"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "textureId",
+          "type": "integer",
+          "desc": "id of the velocity u texture"
+        }
+      ]
+    },
+    {
+      "name": "getShallowWaterSimulationOutputVelocityVTexture",
+      "category": "ShallowWaterSimulation",
+      "description": "Returns v (aka y) component of velocity output texture of the simulation, which defines the v component of velocity of the simulation at every point.",
+      "inputs": [
+        {
+          "name": "shallowWaterSimulation",
+          "type": "entityId",
+          "desc": "simulation/id of the shallow water sim to retrieve the texture from"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "textureId",
+          "type": "integer",
+          "desc": "id of the velocity u texture"
+        }
+      ]
+    },
+    {
+      "name": "renderOverlay",
+      "category": "Overlays",
+      "description": "Render overlay\nOnly allowed to be called within \"draw\"",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "x",
+          "type": "float",
+          "desc": "screenspace x [0 ..1]"
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "desc": "screenspace y [0 ..1]"
+        },
+        {
+          "name": "width",
+          "type": "float",
+          "desc": "normalized width, 1 = full screen width"
+        },
+        {
+          "name": "height",
+          "type": "float",
+          "desc": "normalized height 1 = full screen height"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "set2DMaskFromOverlay",
+      "category": "Overlays",
+      "description": "Set mask for 2d rendering (font and overlays)",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "(ImageOverlay or DensityMapVisualizationOverlay)"
+        },
+        {
+          "name": "maskAlphaOnly",
+          "type": "boolean",
+          "desc": "if true, applies the mask to the alpha channel only, otherwise to all 4 channels"
+        },
+        {
+          "name": "x",
+          "type": "float",
+          "desc": "x position"
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "desc": "y position"
+        },
+        {
+          "name": "width",
+          "type": "float",
+          "desc": ""
+        },
+        {
+          "name": "height",
+          "type": "float",
+          "desc": ""
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "set2DMaskFromTexture",
+      "category": "Overlays",
+      "description": "Set mask for 2d rendering (font and overlays)",
+      "inputs": [
+        {
+          "name": "textureId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "maskAlphaOnly",
+          "type": "boolean",
+          "desc": "if true, applies the mask to the alpha channel only, otherwise to all 4 channels"
+        },
+        {
+          "name": "x",
+          "type": "float",
+          "desc": "x position"
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "desc": "y position"
+        },
+        {
+          "name": "width",
+          "type": "float",
+          "desc": ""
+        },
+        {
+          "name": "height",
+          "type": "float",
+          "desc": ""
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setMaterialCustomMapFromFile",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "textueWrap",
+          "type": "boolean?",
+          "desc": "[optional, default defined by custom shader; ignored anyway]"
+        },
+        {
+          "name": "isSRGB",
+          "type": "boolean?",
+          "desc": "[optional, default defined by custom shader]"
+        },
+        {
+          "name": "sharedEdit",
+          "type": "boolean?",
+          "desc": "[optional, default=true]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newMaterialId",
+          "type": "entityId",
+          "desc": "material id of new material (same as materialId with shared edit mode)"
+        }
+      ]
+    },
+    {
+      "name": "setMaterialDiffuseMapFromFile",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "textueWrap",
+          "type": "boolean",
+          "desc": "(ignored)"
+        },
+        {
+          "name": "isSRGB",
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "name": "sharedEdit",
+          "type": "boolean",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newMaterialId",
+          "type": "entityId",
+          "desc": "material id of new material (same as materialId with shared edit mode)"
+        }
+      ]
+    },
+    {
+      "name": "setMaterialDynamicArrayOfTextureSize",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "size",
+          "type": "integer",
+          "desc": "size"
+        },
+        {
+          "name": "sharedEdit",
+          "type": "boolean?",
+          "desc": "[optional, default=true]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newMaterialId",
+          "type": "entityId",
+          "desc": "material id of new material (same as materialId with shared edit mode)"
+        }
+      ]
+    },
+    {
+      "name": "setMaterialGlossMapFromFile",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "textueWrap",
+          "type": "boolean",
+          "desc": "(ignored)"
+        },
+        {
+          "name": "isSRGB",
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "name": "sharedEdit",
+          "type": "boolean",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newMaterialId",
+          "type": "entityId",
+          "desc": "material id of new material (same as materialId with shared edit mode)"
+        }
+      ]
+    },
+    {
+      "name": "setMaterialNormalMapFromFile",
+      "category": "Rendering",
+      "description": "",
+      "inputs": [
+        {
+          "name": "materialId",
+          "type": "entityId",
+          "desc": ""
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "desc": ""
+        },
+        {
+          "name": "textueWrap",
+          "type": "boolean",
+          "desc": "(ignored)"
+        },
+        {
+          "name": "isSRGB",
+          "type": "boolean",
+          "desc": ""
+        },
+        {
+          "name": "sharedEdit",
+          "type": "boolean",
+          "desc": ""
+        }
+      ],
+      "outputs": [
+        {
+          "name": "newMaterialId",
+          "type": "entityId",
+          "desc": "material id of new material (same as materialId with shared edit mode)"
+        }
+      ]
+    },
+    {
+      "name": "setOverlayColor",
+      "category": "Overlays",
+      "description": "Set overlay color and alpha for whole overlay",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "red",
+          "type": "float",
+          "desc": "red"
+        },
+        {
+          "name": "green",
+          "type": "float",
+          "desc": "green"
+        },
+        {
+          "name": "blue",
+          "type": "float",
+          "desc": "blue"
+        },
+        {
+          "name": "alpha",
+          "type": "float",
+          "desc": "alpha"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setOverlayCornerColor",
+      "category": "Overlays",
+      "description": "Set overlay color and alpha for specified corner\nValues are linearly interpolated between the corners allowing for gradients",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "cornerIndex",
+          "type": "integer",
+          "desc": "corner index (same order as uvs: 0 = bottom left, 1 = top left, 2 = bottom right, 3 = top right) "
+        },
+        {
+          "name": "red",
+          "type": "float",
+          "desc": "red"
+        },
+        {
+          "name": "green",
+          "type": "float",
+          "desc": "green"
+        },
+        {
+          "name": "blue",
+          "type": "float",
+          "desc": "blue"
+        },
+        {
+          "name": "alpha",
+          "type": "float",
+          "desc": "alpha"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setOverlayLayer",
+      "category": "Overlays",
+      "description": "Set layer for texture array overlays",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "layer",
+          "type": "integer",
+          "desc": ""
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setOverlayRotation",
+      "category": "Overlays",
+      "description": "Set overlay rotation",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "rotation",
+          "type": "float",
+          "desc": "rotation"
+        },
+        {
+          "name": "pivotX",
+          "type": "float",
+          "desc": "x position of pivot of rotation (relative to position of overlay)"
+        },
+        {
+          "name": "pivotY",
+          "type": "float",
+          "desc": "y position of pivot of rotation (relative to position of overlay)"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setOverlaySignedDistanceFieldWidth",
+      "category": "Overlays",
+      "description": "Set overlay signed distance field width",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "sdfWidth",
+          "type": "float",
+          "desc": "range of the sdf in normalized color (0.5 full range, 0 disabled)"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setOverlayUVs",
+      "category": "Overlays",
+      "description": "Set overlay uv coordinates",
+      "inputs": [
+        {
+          "name": "overlayId",
+          "type": "entityId",
+          "desc": "overlayId"
+        },
+        {
+          "name": "u0",
+          "type": "float",
+          "desc": "bottom left u tex coord (original = 0)"
+        },
+        {
+          "name": "v0",
+          "type": "float",
+          "desc": "bottom left v tex coord (original = 0)"
+        },
+        {
+          "name": "u1",
+          "type": "float",
+          "desc": "top left u tex coord (original = 0)"
+        },
+        {
+          "name": "v1",
+          "type": "float",
+          "desc": "top left v tex coord (original = 1)"
+        },
+        {
+          "name": "u2",
+          "type": "float",
+          "desc": "bottom right u tex coord (original = 1)"
+        },
+        {
+          "name": "v2",
+          "type": "float",
+          "desc": "bottom right v tex coord (original = 0)"
+        },
+        {
+          "name": "u3",
+          "type": "float",
+          "desc": "top right u tex coord (original = 1)"
+        },
+        {
+          "name": "v3",
+          "type": "float",
+          "desc": "top right v tex coord (original = 1)"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setShallowWaterSimulationGroundHeightTexture",
+      "category": "ShallowWaterSimulation",
+      "description": "Manually sets ground height texture of the simulation. Only intended for debugging purposes.",
+      "inputs": [
+        {
+          "name": "shallowWaterSimulation",
+          "type": "entityId",
+          "desc": "id of the shallow water simulation"
+        },
+        {
+          "name": "textureId",
+          "type": "entityId",
+          "desc": "texture/id to use as ground height. Has to be an UINT texture."
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "setShallowWaterSimulationGroundHeightTextureFromTerrain",
+      "category": "ShallowWaterSimulation",
+      "description": "Manually sets ground height texture from a terrain transform group. The terrain transform group has to remain alive for the time the Shallow Water Simulation is alive.\nWhen the simulation has a terrain-based ground height texture, the simulation fetches the terrain height correctly based on the world position set from shallowWaterSimulationSetWorldPosition\nas well as the physical grid size set when the simulation was created.",
+      "inputs": [
+        {
+          "name": "shallowWaterSimulation",
+          "type": "entityId",
+          "desc": "id of the shallow water simulation"
+        },
+        {
+          "name": "terrainTransformGroup",
+          "type": "integer",
+          "desc": "transform group/id to get the height texture from"
+        }
+      ],
+      "outputs": []
+    }
+  ]
+}
