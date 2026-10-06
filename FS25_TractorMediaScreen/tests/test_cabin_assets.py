@@ -28,8 +28,17 @@ class CabinClipAssets(unittest.TestCase):
             data = (MOD / name).read_bytes()
             generator.validate_dds(data, name)
             header = struct.unpack("<31I", data[4:128])
-            self.assertEqual((header[3], header[2], header[6]), (256, 144, 9))
+            self.assertEqual((header[3], header[2], header[6]), (256, 256, 9))
+            for dimension in (header[3], header[2]):
+                self.assertGreater(dimension, 0)
+                self.assertEqual(dimension & (dimension - 1), 0)
             self.assertEqual(data[84:88], b"DXT1")
+
+    def test_non_power_of_two_frames_are_rejected(self):
+        data = bytearray((MOD / generator.FRAME_NAMES[0]).read_bytes())
+        struct.pack_into("<I", data, 12, 144)
+        with self.assertRaisesRegex(ValueError, "powers of two"):
+            generator.validate_dds(data, "old_256x144.dds")
 
     def test_changed_source_or_frame_rejects_stale_metadata(self):
         with tempfile.TemporaryDirectory(prefix="tms_cabin_check_") as temporary:

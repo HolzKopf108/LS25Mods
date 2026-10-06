@@ -35,12 +35,13 @@ check(TMSProfiles.find("mydata/vehicles/valtra/sSeries/sSeries.xml") == nil, "Re
 
 local created, stopped, deleted, started = 0, 0, 0, 0
 local ready, playing, throwUpdate = false, false, false
-local lastLoop
+local lastLoop, lastVolume
 local decoderTime = 0
 local api = {
     createVideoOverlay = function(filename, looping, volume)
-        check(type(looping) == "boolean" and volume == 0.25, "Explicit loop/volume settings")
-        lastLoop = looping
+        check(type(looping) == "boolean" and type(volume) == "number" and volume >= 0 and volume <= 1,
+            "Explicit loop/volume settings")
+        lastLoop, lastVolume = looping, volume
         created = created + 1; return 100 + created
     end,
     isVideoOverlayReadyToPlay = function() return ready end,
@@ -54,7 +55,7 @@ local api = {
 }
 local video = TMSNativeVideo.new(api)
 check(video:start("test.ogv", 0.25), "Native creation")
-check(lastLoop == false, "Default probe backend playback is not looping")
+check(lastLoop == false and lastVolume == 0.25, "Backend respects caller's loop/volume settings")
 video:update(16)
 check(started == 0 and video.state == "loading", "Wait for decoder readiness")
 ready = true
@@ -224,10 +225,19 @@ g_localPlayer.getCurrentVehicle = function() return v2 end
 TractorMediaScreen:update(16)
 stale("https://youtu.be/dQw4w9WgXcQ", true)
 check(TractorMediaScreen.source == nil, "Stale dialog cannot change new vehicle session")
+check(not TractorMediaScreen.pip, "A new vehicle session starts without PiP")
+check(TractorMediaScreen:startVideoTest("ogv") and not TractorMediaScreen.pip,
+    "Starting the cabin clip does not enable PiP")
+ready, decoderTime = true, 0.5
+TractorMediaScreen:update(16)
+check(TractorMediaScreen.video.state == "playing" and TractorMediaScreen.cabinVideo.frame == 8
+    and not TractorMediaScreen.pip, "Cabin playback advances before PiP was ever enabled")
+TractorMediaScreen:stopVideoTest()
 TractorMediaScreen.onPip(input, nil, 1)
 check(TractorMediaScreen.pip, "PiP toggles locally")
 check(TractorMediaScreen:startVideoTest("ogv"), "Local HUD probe can start")
-check(lastLoop == true, "Driver test repeats until stopped")
+check(lastLoop == true and lastVolume == 1.0, "Driver test loops at native default volume")
+check(TractorMediaScreen.pip, "Starting preserves manually enabled PiP")
 local decoder = TractorMediaScreen.video.id
 ready, decoderTime = true, 1
 TractorMediaScreen:update(16)
@@ -244,11 +254,13 @@ TractorMediaScreen:stopVideoTest()
 check(v2[specKey].displayFilename:find("black.dds", 1, true) and TractorMediaScreen.video.id == nil,
     "Stopping restores the previous black screen even when pattern flag was already false")
 ready = false
+TractorMediaScreen.onPip(input, nil, 1)
 TractorMediaScreen.onVideoTest(input, nil, 1)
-check(TractorMediaScreen.videoProbe.format == "ogv" and TractorMediaScreen.pip,
-    "Video key starts the user-confirmed OGV format first")
+check(TractorMediaScreen.videoProbe.format == "ogv" and not TractorMediaScreen.pip,
+    "Video key starts OGV without enabling PiP")
 TractorMediaScreen:update(15001)
-check(TractorMediaScreen.videoProbe.format == "webm", "Loading failure automatically tries WebM")
+check(TractorMediaScreen.videoProbe.format == "webm" and not TractorMediaScreen.pip,
+    "Fallback to WebM preserves hidden PiP")
 TractorMediaScreen:update(15001)
 check(TractorMediaScreen.videoProbe.format == "mp4", "Second loading failure automatically tries MP4")
 local messagesBefore = InfoDialog.count
@@ -268,8 +280,8 @@ check(not TractorMediaScreen.videoProbe.active and TractorMediaScreen.video.id =
 g_gui.getIsGuiVisible = function() return false end
 TractorMediaScreen.onMenu(input, nil, 1)
 TMSLinkDialog.pending("", true, "videoTest")
-check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "ogv",
-    "Menu button starts video without a URL or video shortcut")
+check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "ogv"
+    and not TractorMediaScreen.pip, "Menu button starts video without enabling PiP")
 TractorMediaScreen:startVideoTest("mp4")
 g_localPlayer.getCurrentVehicle = function() return nil end
 TractorMediaScreen:update(16)

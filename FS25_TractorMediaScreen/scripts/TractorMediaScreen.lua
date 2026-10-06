@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.2.0",
+    VERSION = "0.1.3.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -229,7 +229,7 @@ function TractorMediaScreen:startVideoTest(format)
     if not self.active or self:refreshVehicle() == nil or self.video == nil then return false end
     if self.cabinVideo ~= nil then self.cabinVideo:clear() end
     self.videoFailureShown = false
-    self.pip = true
+    -- Playback keeps the driver's explicitly chosen PiP visibility.
     return self.videoProbe:start(format)
 end
 

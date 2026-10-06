@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Linus</author>
-    <version>0.1.2.0</version>
+    <version>0.1.3.0</version>
     <title>
         <en>Tractor Media Screen - Prototype</en>
         <de>Tractor Media Screen - Prototyp</de>
@@ -47,7 +47,7 @@
         <text name="tms_without"><en>Without monitor</en><de>Ohne Monitor</de></text>
         <text name="tms_with"><en>With monitor (prototype)</en><de>Mit Monitor (Prototyp)</de></text>
         <text name="tms_patternTest"><en>Tractor Media Screen - test pattern</en><de>Tractor Media Screen - Testbild</de></text>
-        <text name="tms_videoTest"><en>Test video - cabin and picture-in-picture</en><de>Testvideo - Kabine und Bild-in-Bild</de></text>
+        <text name="tms_videoTest"><en>Test clip - cabin: prepared frames</en><de>Testclip - Kabine: Einzelbildfolge</de></text>
         <text name="tms_hudOnlyVideoTest"><en>Test video - HUD only; see log for cabin status</en><de>Testvideo - nur HUD; Kabinenstatus siehe Log</de></text>
         <text name="tms_videoLoading"><en>Loading test video (%s, %ds)...</en><de>Testvideo lädt (%s, %ds)...</de></text>
         <text name="tms_videoFailed"><en>Test video failed - see message and log.txt</en><de>Testvideo fehlgeschlagen - siehe Meldung und log.txt</de></text>

@@ -17,7 +17,11 @@ MOD = Path(__file__).resolve().parents[1]
 SOURCE = "assets/media/test.ogv"
 DATA = "scripts/media/TMSCabinClipData.lua"
 DIRECTORY = "assets/media/cabinTest"
-WIDTH, HEIGHT, FPS, DURATION = 256, 144, 15, 6
+SOURCE_WIDTH, SOURCE_HEIGHT, SOURCE_FPS = 640, 360, 30
+# Store the complete image in a power-of-two texture. The monitor's full-range
+# UVs and 16:9 geometry restore the source aspect; no padding or crop is needed.
+WIDTH, HEIGHT, FPS, DURATION = 256, 256, 15, 6
+MIP_COUNT = max(WIDTH, HEIGHT).bit_length()
 FRAME_COUNT = FPS * DURATION
 FRAME_NAMES = tuple(f"{DIRECTORY}/frame_{index:04d}.dds"
                     for index in range(1, FRAME_COUNT + 1))
@@ -32,7 +36,9 @@ def validate_dds(data, name):
     if len(data) < 128 or data[:4] != b"DDS " or data[84:88] != b"DXT1":
         raise ValueError(f"Invalid BC1 DDS frame: {name}")
     header = struct.unpack("<31I", data[4:128])
-    if (header[0], header[2], header[3], header[6]) != (124, HEIGHT, WIDTH, 9):
+    if any(value <= 0 or value & (value - 1) for value in (header[2], header[3])):
+        raise ValueError(f"DDS dimensions must be powers of two: {name}")
+    if (header[0], header[2], header[3], header[6]) != (124, HEIGHT, WIDTH, MIP_COUNT):
         raise ValueError(f"Unexpected DDS dimensions or mip count: {name}")
     width, height, size = WIDTH, HEIGHT, 128
     for _ in range(header[6]):
@@ -61,6 +67,8 @@ def render_data(source_hash, frames_hash):
         f'    framesSha256 = "{frames_hash}",',
         f"    width = {WIDTH},",
         f"    height = {HEIGHT},",
+        f"    sourceWidth = {SOURCE_WIDTH},",
+        f"    sourceHeight = {SOURCE_HEIGHT},",
         f"    fps = {FPS},",
         f"    frameCount = {FRAME_COUNT},",
         f"    duration = {DURATION},",
@@ -97,7 +105,8 @@ def probe_source(ffprobe, source):
                                        text=True).stdout)
     stream = result["streams"][0]
     duration = float(stream.get("duration", result["format"]["duration"]))
-    if (stream["width"], stream["height"], stream["r_frame_rate"]) != (640, 360, "30/1"):
+    if (stream["width"], stream["height"], stream["r_frame_rate"]) != (
+            SOURCE_WIDTH, SOURCE_HEIGHT, f"{SOURCE_FPS}/1"):
         raise ValueError("Expected the bundled 640x360, 30fps test.ogv")
     if abs(duration - DURATION) > 0.001:
         raise ValueError("Expected the bundled six-second test.ogv")

@@ -1,6 +1,9 @@
 -- Try the bundled test clips only. Online URLs never reach the native decoder.
 TMSVideoProbe = {}
 TMSVideoProbe.__index = TMSVideoProbe
+-- Match VideoElement's default. The bundled tone already has headroom;
+-- do not attenuate it again or change any global audio/mixer settings.
+TMSVideoProbe.VOLUME = 1.0
 
 function TMSVideoProbe.new(video, directory)
     return setmetatable({video = video, directory = directory, failures = {}}, TMSVideoProbe)
@@ -25,9 +28,9 @@ function TMSVideoProbe:nextFormat()
     while self.index < #self.formats do
         self.index = self.index + 1
         self.format = self.formats[self.index]
-        Logging.info("[TractorMediaScreen] Video attempt %d/%d: %s; file=%sassets/media/test.%s",
-            self.index, #self.formats, self.format, self.directory, self.format)
-        if self.video:start(self.directory .. "assets/media/test." .. self.format, 0.25, true) then
+        Logging.info("[TractorMediaScreen] Video attempt %d/%d: %s; volume=%.2f; file=%sassets/media/test.%s",
+            self.index, #self.formats, self.format, self.VOLUME, self.directory, self.format)
+        if self.video:start(self.directory .. "assets/media/test." .. self.format, self.VOLUME, true) then
             return true
         end
         self:recordFailure()

@@ -2,10 +2,12 @@
 -- Precomputed six-second test frames; not a live video/YouTube bridge.
 TMSCabinClipData = {
     sourceFile = "assets/media/test.ogv",
-    sourceSha256 = "f82028a8d3a6365199f86677ca40870654887a391d35f1e14145da9a294e4f0c",
-    framesSha256 = "57e2e297d963695d7a317829e012660973d3f5aad087e826580a0a050a803483",
+    sourceSha256 = "0e0cc71979099977a54d84c27328dc4e503bb7e06440793e25aea417f28c1639",
+    framesSha256 = "9d28b64f8f5b1354c3d5a5030dfd9270235de5b766a65c3aa721818f2dae919b",
     width = 256,
-    height = 144,
+    height = 256,
+    sourceWidth = 640,
+    sourceHeight = 360,
     fps = 15,
     frameCount = 90,
     duration = 6,

@@ -18,7 +18,9 @@ def main():
     common = [args.ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
               "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30:duration=6",
               "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=6",
-              "-af", "volume=0.1,afade=t=out:st=5:d=1", "-pix_fmt", "yuv420p", "-shortest",
+              # FFmpeg sine has amplitude 0.125. This gives about -14 dBFS
+              # peak, with headroom and an audible level for the sound test.
+              "-af", "volume=1.5848931924611136,afade=t=out:st=5:d=1", "-pix_fmt", "yuv420p", "-shortest",
               "-map_metadata", "-1"]
     formats = {
         "ogv": ["-c:v", "libtheora", "-q:v", "5", "-c:a", "libvorbis", "-q:a", "2"],
