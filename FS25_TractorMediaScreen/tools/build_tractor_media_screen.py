@@ -10,6 +10,7 @@ ALLOWED = {
     "scripts": {".lua"},
     "assets": {".i3d", ".dds", ".ogv", ".mp4", ".webm"},
     "assets/gui": {".xml"},
+    "assets/pixelProbe": {".xml"},
 }
 
 
@@ -33,7 +34,8 @@ def runtime_files(mod=MOD):
             raise ValueError(f"Missing or unsafe runtime file: {name}")
     required = {"assets/monitor/monitor.i3d", "assets/monitor/black.dds",
                 "assets/monitor/testPattern.dds", "assets/media/test.ogv",
-                "assets/media/test.mp4", "assets/media/test.webm", "assets/gui/TMSLinkDialog.xml"}
+                "assets/media/test.mp4", "assets/media/test.webm", "assets/gui/TMSLinkDialog.xml",
+                "assets/pixelProbe/screen.i3d", "assets/pixelProbe/pixelsShader.xml"}
     if not required.issubset(files):
         raise ValueError(f"Run the asset generators first: missing {sorted(required-files)}")
     # The prepared 3D clip must match the exact OGV played by the native decoder.

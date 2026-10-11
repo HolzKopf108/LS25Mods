@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Linus</author>
-    <version>0.1.4.0</version>
+    <version>0.1.5.0</version>
     <title>
         <en>Tractor Media Screen - Prototype</en>
         <de>Tractor Media Screen - Prototyp</de>
@@ -21,6 +21,7 @@
         <sourceFile filename="scripts/media/TMSNativeVideo.lua"/>
         <sourceFile filename="scripts/media/TMSVideoProbe.lua"/>
         <sourceFile filename="scripts/media/TMSRuntimeApiReport.lua"/>
+        <sourceFile filename="scripts/media/TMSPixelProbe.lua"/>
         <sourceFile filename="scripts/media/TMSCabinClipData.lua"/>
         <sourceFile filename="scripts/media/TMSCabinVideo.lua"/>
         <sourceFile filename="scripts/gui/TMSLinkDialog.lua"/>
@@ -56,6 +57,8 @@
         <text name="tms_linkPrompt"><en>Enter a YouTube link. Playback is not available in this prototype.</en><de>YouTube-Link eingeben. Die Wiedergabe ist in diesem Prototyp noch nicht verfügbar.</de></text>
         <text name="tms_checkLink"><en>Check link</en><de>Link prüfen</de></text>
         <text name="tms_startVideoTest"><en>Start test video</en><de>Testvideo starten</de></text>
+        <text name="tms_startPixelTest"><en>Test pixel transfer (20 s)</en><de>Pixeltransfer testen (20 s)</de></text>
+        <text name="tms_pixelFailed"><en>The pixel transfer test could not run. Please send log.txt for analysis.</en><de>Der Pixeltransfer-Test konnte nicht ausgeführt werden. Bitte log.txt zur Auswertung bereitstellen.</de></text>
         <text name="tms_linkDialogUnavailable"><en>The link menu could not be loaded. Please check log.txt.</en><de>Das Linkmenü konnte nicht geladen werden. Bitte log.txt prüfen.</de></text>
         <text name="tms_invalidLink"><en>This is not a supported video link.</en><de>Das ist kein unterstützter Videolink.</de></text>
         <text name="tms_unsupportedProvider"><en>Please enter a YouTube link. Twitch is planned as a later extension.</en><de>Bitte einen YouTube-Link eingeben. Twitch ist als spätere Erweiterung vorgesehen.</de></text>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Own experimental shader. Buffer contents are supplied from Lua, never a DDS. -->
+<CustomShader version="5">
+    <UvUsages><UvUsage textureName="tmsPixels" uvType="custom"/></UvUsages>
+    <Textures>
+        <Texture name="tmsPixels" group="base" type="buffer" defaultColorProfile="linearRGB" isBindless="false"/>
+    </Textures>
+    <LodLevel startDistance="0">
+        <CodeInjections>
+            <CodeInjection position="SAMPLERS"><![CDATA[
+textureBuffer<float4> tmsPixels;
+            ]]></CodeInjection>
+            <CodeInjection position="VS_OUTPUT"><![CDATA[
+float2 tmsUv : TEXCOORDn;
+            ]]></CodeInjection>
+            <CodeInjection position="POST_SET_TEXCOORDS_VS"><![CDATA[
+Out.tmsUv = In.position.xy / float2(0.256, 0.144) + float2(0.5, 0.5);
+            ]]></CodeInjection>
+            <CodeInjection position="EMISSIVE_FS"><![CDATA[
+uint2 tmsPixel = uint2(min(floor(saturate(In.vs.tmsUv) * float2(32.0, 18.0)), float2(31.0, 17.0)));
+emissiveColor.rgb = bufferFetch(tmsPixels, tmsPixel.y * 32u + tmsPixel.x).rgb;
+            ]]></CodeInjection>
+        </CodeInjections>
+    </LodLevel>
+</CustomShader>

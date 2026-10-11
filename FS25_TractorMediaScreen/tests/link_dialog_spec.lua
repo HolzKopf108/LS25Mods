@@ -20,7 +20,8 @@ function DialogElement:close() g_gui:closeDialogByName(self.name) end
 Logging = {warning = function() end}
 
 local function textElement()
-    return {text = "", setText = function(self, text) self.text = text end}
+    return {text = "", setText = function(self, text) self.text = text end,
+        setVisible = function(self, visible) self.visible = visible end}
 end
 local filtered = 0
 local function textInput()
@@ -48,6 +49,7 @@ function g_gui:loadGui(filename, name, target)
     target.name = name
     target.titleElement, target.promptElement, target.confirmButton = textElement(), textElement(), textElement()
     target.videoTestButton = textElement()
+    target.pixelTestButton = textElement()
     target.textInputElement = textInput()
     local gui = {target = target}
     self.guis[name] = gui
@@ -83,6 +85,7 @@ local fullUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123&index=2&
 check(TMSLinkDialog.show(callback, target, fullUrl, "Title", "Prompt", "Check", args), "Open URL dialog")
 local view = TMSLinkDialog.instance
 check(view.titleElement.text == "Title" and view.confirmButton.text == "Check", "Dialog labels")
+check(not view.pixelTestButton.visible, "Optional pixel test stays hidden for existing callers")
 check(not sharedInput.capturing and sharedInput.applyProfanityFilter, "Shared game dialog unchanged")
 check(not TMSLinkDialog.show(callback), "Avoid replacing an open dialog callback")
 view.textInputElement:setForcePressed(false)
@@ -104,7 +107,14 @@ TMSLinkDialog.show(callback, target, "", nil, nil, nil, args, "Test video")
 view:onClickVideoTest()
 check(result.accepted and result.action == "videoTest" and result.text == "",
     "Test video can start without a link and after closing the dialog")
+TMSLinkDialog.show(callback, target, "", nil, nil, nil, args, "Test video", "Pixeltransfer testen")
+check(view.pixelTestButton.visible and view.pixelTestButton.text == "Pixeltransfer testen",
+    "Show the explicitly available pixel test with its own label")
+view:onClickPixelTest()
+check(result.accepted and result.action == "pixels" and result.text == "" and result.args == args,
+    "Pixel test dispatches separately without requiring a URL and preserves the session arguments")
 TMSLinkDialog.show(callback, target, fullUrl)
+check(not view.pixelTestButton.visible, "Reused dialog hides the pixel test when omitted")
 view:onEscPressed()
 check(not result.accepted, "Escape cancels")
 TMSLinkDialog.show(callback, target, fullUrl)

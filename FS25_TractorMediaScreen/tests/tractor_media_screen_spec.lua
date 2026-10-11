@@ -12,6 +12,7 @@ load("scripts/media/TMSMediaSource.lua")
 load("scripts/media/TMSNativeVideo.lua")
 load("scripts/media/TMSVideoProbe.lua")
 load("scripts/media/TMSRuntimeApiReport.lua")
+load("scripts/media/TMSPixelProbe.lua")
 load("scripts/media/TMSCabinClipData.lua")
 load("scripts/media/TMSCabinVideo.lua")
 
@@ -210,6 +211,23 @@ check(edits[1].shared == false and edits[2].shared == true, "Clone once, then ed
 
 g_localPlayer = {isOwner = true, getCurrentVehicle = function() return v1 end}
 local apiCaptures, originalCapture = 0, TMSRuntimeApiReport.capture
+local pixelUploads, pixelModelLoads = 0, 0
+TextureFormat = {R32G32B32A32_FLOAT = 27}
+function createTextureBuffer(name, format, data)
+    assert(type(name) == "string" and format == 27 and #data == 2304)
+    pixelUploads = pixelUploads + 1
+    return 60000 + pixelUploads
+end
+function setMaterialCustomMap(material, name, texture, shared)
+    assert(name == "tmsPixels" and texture > 60000)
+    return shared and material or material + 200
+end
+function loadI3DFile(filename)
+    assert(filename:find("assets/pixelProbe/screen.i3d", 1, true))
+    pixelModelLoads = pixelModelLoads + 1
+    return 40000 + pixelModelLoads * 2
+end
+function setVisibility() end
 TMSRuntimeApiReport.capture = function(...)
     apiCaptures = apiCaptures + 1
     return originalCapture(...)
@@ -217,6 +235,7 @@ end
 TractorMediaScreen:loadMap()
 TractorMediaScreen:update(16)
 check(apiCaptures == 1 and commands.tmsApi, "Client collects runtime function names once at map load")
+check(pixelUploads == 0 and pixelModelLoads == 0, "Map load never executes the experimental native path")
 local input = {player = g_localPlayer}
 TractorMediaScreen.registerActionEvents(input, "VEHICLE")
 check(bindings == 4, "Four local bindings")
@@ -289,20 +308,46 @@ TractorMediaScreen.onMenu(input, nil, 1)
 TMSLinkDialog.pending("", true, "videoTest")
 check(TractorMediaScreen.videoProbe.active and TractorMediaScreen.videoProbe.format == "ogv"
     and not TractorMediaScreen.pip, "Menu button starts video without enabling PiP")
+TractorMediaScreen.onMenu(input, nil, 1)
+TMSLinkDialog.pending("", true, "pixels")
+check(TractorMediaScreen.pixelProbe.active and TractorMediaScreen.video.id == nil
+    and not TractorMediaScreen.videoProbe.active and not TractorMediaScreen.pip,
+    "Pixel button stops decoder/audio and does not enable PiP")
+check(TractorMediaScreen.pixelProbe.parent == v2[specKey].monitorNode,
+    "Pixel surface belongs to local driver's monitor only")
+TractorMediaScreen:update(100)
+check(pixelUploads == 2, "Controller advances the pixel probe without drawing PiP")
+g_gui.getIsGuiVisible = function() return true end
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.pixelProbe.active and TractorMediaScreen.pixelProbe.root == nil,
+    "Opening any menu removes experimental surface and buffer")
+g_gui.getIsGuiVisible = function() return false end
+TractorMediaScreen:startPixelTest()
 TractorMediaScreen:startVideoTest("mp4")
+check(not TractorMediaScreen.pixelProbe.active and TractorMediaScreen.pixelProbe.root == nil
+    and TractorMediaScreen.videoProbe.active, "Switching to video releases pixel material first")
+TractorMediaScreen:startPixelTest()
 g_localPlayer.getCurrentVehicle = function() return nil end
 TractorMediaScreen:update(16)
 check(TractorMediaScreen.video.id == nil and TractorMediaScreen.vehicle == nil, "Exit releases playback")
+check(not TractorMediaScreen.pixelProbe.active and TractorMediaScreen.pixelProbe.root == nil,
+    "Exit also releases experimental texture and surface")
 local beforeBind = bindings
 g_gui.getIsGuiVisible = function() return true end
 check(not TractorMediaScreen.canHandle(input, 1), "Menus block driving hotkeys")
 g_gui.getIsGuiVisible = function() return false end
+g_localPlayer.getCurrentVehicle = function() return v2 end
+TractorMediaScreen:startPixelTest()
+local mapPixelProbe = TractorMediaScreen.pixelProbe
 TractorMediaScreen:deleteMap()
+check(not mapPixelProbe.active and mapPixelProbe.root == nil and TractorMediaScreen.pixelProbe == nil,
+    "Map cleanup releases a running pixel probe")
 check(next(commands) == nil, "Map cleanup unregisters console commands")
 check(apiCaptures == 1, "Video starts, menus and vehicle changes do not repeat the API inventory")
 
 g_dedicatedServer = {}
 local beforeOverlay = overlays
+local beforePixels = pixelUploads
 TractorMediaScreen:loadMap()
 TractorMediaScreen.registerActionEvents(input, "VEHICLE")
 local serverVehicle = makeVehicle()
@@ -310,6 +355,8 @@ check(serverVehicle.pending == nil, "Dedicated server does not load visual I3D")
 check(overlays == beforeOverlay and bindings == beforeBind and not TractorMediaScreen.active,
     "Dedicated server creates neither player inputs nor video/HUD")
 check(apiCaptures == 1 and commands.tmsApi == nil, "Dedicated server skips client API inventory")
+check(not TractorMediaScreen:startPixelTest() and pixelUploads == beforePixels
+    and TractorMediaScreen.pixelProbe == nil, "Dedicated server cannot run the experimental transfer")
 TractorMediaScreen:deleteMap()
 g_dedicatedServer = nil
 TMSVehicle.onDelete(v1); TMSVehicle.onDelete(v1)

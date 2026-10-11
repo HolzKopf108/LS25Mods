@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<i3D name="TMSPixelProbe" version="1.6">
+    <Asset><Export program="TractorMediaScreen pixel transfer experiment" version="0.1.5.0"/></Asset>
+    <Files><File fileId="1" filename="pixelsShader.xml"/></Files>
+    <Materials>
+        <Material materialId="1" name="tmsPixelProbe" diffuseColor="0 0 0 1" specularColor="0 0 0" emissiveColor="1 1 1" customShaderId="1"/>
+    </Materials>
+    <Shapes>
+        <IndexedTriangleSet name="tmsPixels" shapeId="1" bvCenter="0 0 0.0215" bvRadius="0.1484">
+            <Vertices count="4" normal="true" uv0="true">
+                <v p="-0.128 -0.072 0.0215" n="0 0 1" t0="0 0"/>
+                <v p="0.128 -0.072 0.0215" n="0 0 1" t0="1 0"/>
+                <v p="0.128 0.072 0.0215" n="0 0 1" t0="1 1"/>
+                <v p="-0.128 0.072 0.0215" n="0 0 1" t0="0 1"/>
+            </Vertices>
+            <Triangles count="2"><t vi="0 1 2"/><t vi="0 2 3"/></Triangles>
+            <Subsets count="1"><Subset firstVertex="0" numVertices="4" firstIndex="0" numIndices="6"/></Subsets>
+        </IndexedTriangleSet>
+    </Shapes>
+    <Scene><Shape name="tmsPixels" shapeId="1" nodeId="1" materialIds="1" castsShadows="false" receiveShadows="false"/></Scene>
+</i3D>

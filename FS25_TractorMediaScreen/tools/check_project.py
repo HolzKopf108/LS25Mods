@@ -22,8 +22,9 @@ def main():
             lua.execute("dofile(TEST_SCRIPT)")
     if args.mod_schema or args.i3d_schema:
         from lxml import etree
-        for schema, document in ((args.mod_schema, MOD / "modDesc.xml"),
-                                 (args.i3d_schema, MOD / "assets/monitor/monitor.i3d")):
+        documents = [(args.mod_schema, MOD / "modDesc.xml")]
+        documents.extend((args.i3d_schema, path) for path in sorted((MOD / "assets").rglob("*.i3d")))
+        for schema, document in documents:
             if schema:
                 validator = etree.XMLSchema(etree.parse(str(schema)))
                 validator.assertValid(etree.parse(str(document)))

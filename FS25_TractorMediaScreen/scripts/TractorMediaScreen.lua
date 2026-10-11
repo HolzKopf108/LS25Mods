@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.4.0",
+    VERSION = "0.1.5.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -46,6 +46,13 @@ function TractorMediaScreen:loadMap()
     self.cabinVideo = TMSCabinVideo.new(self.modDirectory, TMSCabinClipData, {
         setTexture = TMSVehicle.setDisplayTexture, restore = TMSVehicle.restoreDisplay
     })
+    self.pixelProbe = TMSPixelProbe.new(self.modDirectory, {
+        createTextureBuffer = createTextureBuffer,
+        format = TextureFormat and TextureFormat.R32G32B32A32_FLOAT,
+        setMaterialCustomMap = setMaterialCustomMap, getMaterial = getMaterial, setMaterial = setMaterial,
+        loadI3DFile = loadI3DFile, getNumOfChildren = getNumOfChildren, getChildAt = getChildAt,
+        link = link, setVisibility = setVisibility, delete = delete
+    })
     self.overlay = createImageOverlay(self.modDirectory .. "assets/monitor/testPattern.dds")
     Logging.info("[TractorMediaScreen] v%s loaded; GUI video missing APIs: %s; cabin=prepared OGV frames; live 3D video=unavailable; YouTube=unavailable",
         self.VERSION, table.concat(self.video:missingFunctions(), ","))
@@ -54,6 +61,7 @@ function TractorMediaScreen:loadMap()
     addConsoleCommand("tmsNodes", "List candidate cabin mappings", "consoleNodes", self)
     addConsoleCommand("tmsVideo", "Test native HUD video: auto, mp4, ogv, webm or stop", "consoleVideo", self)
     addConsoleCommand("tmsApi", "List visible media/render function names without calling them", "consoleApi", self)
+    addConsoleCommand("tmsPixels", "20 second generated pixel transfer probe, or stop", "consolePixels", self)
     self:consoleApi()
 end
 
@@ -62,8 +70,9 @@ function TractorMediaScreen:deleteMap()
     if self.active then TMSLinkDialog.reset() end
     if self.overlay ~= nil and self.overlay ~= 0 then delete(self.overlay) end
     self.overlay, self.video, self.videoProbe, self.cabinVideo = nil, nil, nil, nil
+    self.pixelProbe = nil
     if self.active then
-        for _, name in ipairs({"tmsStatus", "tmsMount", "tmsNodes", "tmsVideo", "tmsApi"}) do
+        for _, name in ipairs({"tmsStatus", "tmsMount", "tmsNodes", "tmsVideo", "tmsApi", "tmsPixels"}) do
             removeConsoleCommand(name)
         end
     end
@@ -104,7 +113,12 @@ function TractorMediaScreen:update(dt)
     if self.video == nil then return end
     -- The prototype has no native pause/seek API. Stop when a menu opens.
     if g_gui ~= nil and g_gui:getIsGuiVisible() then
-        if self.videoProbe.active then self:stopVideoTest() end
+        if self.videoProbe.active or (self.pixelProbe ~= nil and self.pixelProbe.active) then self:stopVideoTest() end
+        return
+    end
+    if self.pixelProbe ~= nil and self.pixelProbe.active then
+        self.pixelProbe:update(dt)
+        self:showPixelFailure()
         return
     end
     self.videoProbe:update(dt)
@@ -114,6 +128,7 @@ end
 
 function TractorMediaScreen:draw()
     if not self.active or self.vehicle == nil or not self.pip
+        or (self.pixelProbe ~= nil and self.pixelProbe.active)
         or (g_gui ~= nil and g_gui:getIsGuiVisible()) then return end
     local aspect = (g_screenWidth or 1920) / (g_screenHeight or 1080)
     local width = math.min(0.30, 0.48 * 16 / 9 / aspect)
@@ -209,13 +224,15 @@ function TractorMediaScreen.onMenu(input, name, value)
     self:stopVideoTest()
     local shown = TMSLinkDialog.show(self.onLinkEntered, self, self.lastInput or "",
         self.i18n:getText("tms_menuTitle"), self.i18n:getText("tms_linkPrompt"),
-        self.i18n:getText("tms_checkLink"), self.generation, self.i18n:getText("tms_startVideoTest"))
+        self.i18n:getText("tms_checkLink"), self.generation, self.i18n:getText("tms_startVideoTest"),
+        self.i18n:getText("tms_startPixelTest"))
     if not shown then InfoDialog.show(self.i18n:getText("tms_linkDialogUnavailable")) end
 end
 
 function TractorMediaScreen:onLinkEntered(text, clickOk, generation, action)
     if not clickOk or not self.active or generation ~= self.generation then return end
     if self.getLocalVehicle() ~= self.vehicle or self.vehicle == nil then return end
+    if action == "pixels" then self:startPixelTest(); return end
     if action == "videoTest" then
         Logging.info("[TractorMediaScreen] Video test requested from media menu")
         self:startVideoTest("auto")
@@ -229,6 +246,7 @@ end
 
 function TractorMediaScreen:startVideoTest(format)
     if not self.active or self:refreshVehicle() == nil or self.video == nil then return false end
+    if self.pixelProbe ~= nil then self.pixelProbe:stop() end
     if self.cabinVideo ~= nil then self.cabinVideo:clear() end
     self.videoFailureShown = false
     -- Playback keeps the driver's explicitly chosen PiP visibility.
@@ -236,10 +254,36 @@ function TractorMediaScreen:startVideoTest(format)
 end
 
 function TractorMediaScreen:stopVideoTest()
+    if self.pixelProbe ~= nil then self.pixelProbe:stop() end
     if self.cabinVideo ~= nil then self.cabinVideo:clear() end
     if self.videoProbe ~= nil then self.videoProbe:stop()
     elseif self.video ~= nil then self.video:stop() end
     self.videoFailureShown = false
+end
+
+function TractorMediaScreen:startPixelTest()
+    if not self.active or self:refreshVehicle() == nil or self.pixelProbe == nil then return false end
+    self:stopVideoTest()
+    self.pixelFailureShown = false
+    local spec = TMSVehicle.getState(self.vehicle)
+    local started = self.pixelProbe:start(spec and spec.monitorNode)
+    self:showPixelFailure()
+    return started
+end
+
+function TractorMediaScreen:showPixelFailure()
+    if self.pixelProbe == nil or self.pixelProbe.state ~= "failed" or self.pixelFailureShown then return end
+    self.pixelFailureShown = true
+    InfoDialog.show(self.i18n:getText("tms_pixelFailed"))
+end
+
+function TractorMediaScreen:consolePixels(mode)
+    if mode == "stop" then
+        if self.pixelProbe ~= nil then self.pixelProbe:stop() end
+        return "Pixel probe stopped"
+    end
+    return self:startPixelTest() and "Pixel probe started: 20 seconds, cabin only; no video decoder"
+        or "Pixel probe could not start; see log.txt"
 end
 
 function TractorMediaScreen:showVideoFailure()
@@ -273,7 +317,7 @@ end
 function TractorMediaScreen:consoleStatus()
     self:refreshVehicle()
     local spec = TMSVehicle.getState(self.vehicle)
-    return string.format("TractorMediaScreen %s | equipped=%s | model=%s | native=%s | format=%s | cabin=%s | time=%s | frame=%s | missing=%s | errors=%s | YouTube=unavailable | live 3D video=unavailable",
+    return string.format("TractorMediaScreen %s | equipped=%s | model=%s | native=%s | format=%s | cabin=%s | time=%s | frame=%s | missing=%s | errors=%s | pixels=%s | YouTube=unavailable | live 3D video=unavailable",
         self.VERSION, tostring(spec ~= nil), tostring(spec ~= nil and spec.monitorNode ~= nil),
         self.video ~= nil and self.video.state or "disabled",
         self.videoProbe ~= nil and tostring(self.videoProbe.format) or "none",
@@ -281,7 +325,8 @@ function TractorMediaScreen:consoleStatus()
         self.video ~= nil and tostring(self.video.currentTime) or "none",
         self.cabinVideo ~= nil and tostring(self.cabinVideo.frame) or "none",
         self.video ~= nil and table.concat(self.video:missingFunctions(), ",") or "client unavailable",
-        self.videoProbe ~= nil and self.videoProbe:getFailureSummary() or "none")
+        self.videoProbe ~= nil and self.videoProbe:getFailureSummary() or "none",
+        self.pixelProbe ~= nil and self.pixelProbe.state or "disabled")
 end
 
 function TractorMediaScreen:consoleMount(x, y, z, rx, ry, rz)

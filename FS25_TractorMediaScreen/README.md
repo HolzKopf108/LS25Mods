@@ -1,6 +1,6 @@
 # Tractor Media Screen
 
-Stand: 06.10.2026. Diagnoseversion **0.1.4.0** für FS25. Der Benutzer hat mit 0.1.3.0 den korrigierten PiP-Start und hörbaren Testton bestätigt. Die Kabine zeigt weiterhin **vorbereitete Einzelbilder des mitgelieferten OGV-Clips**, synchron zur Zeit desselben Players. Der neue SDK-Bericht enthält keine belegte Video-zu-Material-Verbindung und lässt sogar bereits funktionierende Videoaufrufe aus. Diese Version protokolliert deshalb beim Laden einmal die tatsächlich sichtbaren Funktionen. **Eine direkte Videoausgabe auf dem Kabinenmaterial ist noch nicht implementiert.** Schritt 1 bleibt offen.
+Stand: 10.10.2026. Experimentelle Version **0.1.5.0** für FS25. Neu ist **Pixeltransfer testen (20 s)** im Medienmenü: Lua erzeugt laufend neue Farbwerte und übergibt sie über einen Texturpuffer an einen eigenen Shader auf der Kabinenfläche. Dieser Versuch verwendet keine Bilddateien und muss im Spiel noch bestätigt werden. Er prüft den Transport von Pixeln zum Material, enthält aber noch keinen Videodecoder. Der bisherige OGV-Testfilm nutzt in der Kabine weiterhin vorbereitete Einzelbilder; sein Ton und das optionale PiP sind vom Benutzer bestätigt. **Direkte Videoausgabe und YouTube bleiben offen.**
 
 ## Aktueller Prototyp
 
@@ -22,17 +22,17 @@ Der eigene Linkdialog hat ein breites URL-Feld für bis zu 2048 Zeichen ohne Wor
 
 Die Dialoganbindung wurde mit den FS25-Klassen [TextInputElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=498&version=script), [Gui](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=436&version=script) und [FrameElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=433&version=script) abgeglichen. Grundlage des Montageankers ist [VehicleCamera](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=91&class=891&version=engine). Die Videoreihenfolge entspricht weiterhin dem dokumentierten `VideoElement`; zusätzliche Fehleranzeigen und Formatversuche ersetzen keinen Laufzeittest.
 
-Das [aktuelle Testprotokoll](tests/local/log.txt) stammt vom 06.10.2026, etwa 17:57 bis 18:05 Uhr, FS25 **1.24.0.0**, ModDesc-Unterstützung 114, Mod-Version 0.1.3.0. Es bestätigt OGV-Wiedergabe mit `volume=1.00`, die Kabinenframes mit 256 x 256 und funktionierende Hotkeys. Die früheren Warnungen über die Kabinentexturgröße fehlen. PiP-Verhalten und Ton sind vom Benutzer bestätigt. Die Fehlermeldung zu `FS25_MovePlaceables` gehört zu einem anderen Mod.
+Das [aktuelle Testprotokoll](tests/local/log.txt) enthält Version 0.1.4.0 unter FS25 **1.24.0.0** und die Laufzeitinventur vom 06.10.2026 um 19:02:53 Uhr. Sie erfasst 2.148 Funktionen, darunter `createTextureBuffer`, ohne gemeldete Abdeckungslücken bei den Kontrollfunktionen. Sie liefert keine Aufrufsignaturen. Im vorherigen Lauf mit 0.1.3.0 wurden Ton und PiP-Verhalten bestätigt; die früheren Kabinentextur-Warnungen fehlten. Ein Spieltest von 0.1.5.0 liegt noch nicht vor.
 
 ## Installation und Bedienung des Prototyps
 
-FS25 schließen, genau das ZIP aus `dist/` in das verwendete Mods-Verzeichnis legen, nicht entpacken und im Spielstand aktivieren. Version **0.1.4.0** in der Mod-Liste prüfen. Zunächst einen Testspielstand verwenden. Alle Teilnehmer und der Server benötigen dieselbe Mod-Version. Es wurden keine Spielprofil-Dateien verändert und kein Paket automatisch installiert.
+FS25 schließen, genau das ZIP aus `dist/` in das verwendete Mods-Verzeichnis legen, nicht entpacken und im Spielstand aktivieren. Version **0.1.5.0** in der Mod-Liste prüfen. Zunächst einen Testspielstand verwenden. Alle Teilnehmer und der Server benötigen dieselbe Mod-Version. Es wurden keine Spielprofil-Dateien verändert und kein Paket automatisch installiert.
 
 Im Shop die Basisspiel-Valtra S-Serie und **Medienbildschirm: Mit Monitor (Prototyp)** auswählen. Auch der Umbau eines vorhandenen Fahrzeugs in der Werkstatt ist zu prüfen. Die Aktionen greifen nur im eigenen unterstützten Fahrzeug mit eingebautem Monitor. Sie bleiben im F1-Menü verborgen und sind im Steuerungsmenü änderbar.
 
 | Standardkombination | Aktion |
 | --- | --- |
-| Strg links + Shift links + 7 | Medienmenü mit Linkprüfung und Button **Testvideo starten** öffnen. Noch keine Onlinewiedergabe. |
+| Strg links + Shift links + 7 | Medienmenü mit Linkprüfung, **Testvideo starten** und **Pixeltransfer testen (20 s)** öffnen. Noch keine Onlinewiedergabe. |
 | Strg links + Shift links + 8 | Bild-in-Bild ein-/ausblenden. Kabinentest und Ton laufen weiter. |
 | Strg links + Shift links + 9 | Film gegebenenfalls stoppen und statisches Kabinen-Testbild umschalten. |
 | Strg links + Shift links + V | Testfilm starten/stoppen. OGV mit Kabinenbildern zuerst; bei Fehler WebM/MP4 nur im HUD. |
@@ -45,21 +45,33 @@ Beim Aussteigen, Fahrzeugwechsel oder Öffnen eines Spielmenüs stoppt der Film.
 
 Wenn die Entwicklerkonsole bereits aktiviert ist: `tmsStatus` zeigt zusätzlich Kabinenstatus, Playerzeit und Bildnummer. `cabin=frames` bedeutet, dass Materialwechsel ausgeführt werden; es ist kein Beleg für das sichtbare Ergebnis. `tmsVideo` oder `tmsVideo auto` startet die automatische Auswahl; `tmsVideo ogv`, `tmsVideo mp4` und `tmsVideo webm` testen einzelne Formate. `tmsVideo stop` beendet die Probe. `tmsMount` zeigt Position und Winkel relativ zum Kabinenanker; `tmsMount x y z rx ry rz` ändert sie in Metern und Grad für diese Fahrzeuginstanz ohne Speicherung. `tmsNodes` schreibt vorhandene Kabinen-/Innenraum-/Kameramappings nach `log.txt`.
 
-Die [Testanleitung](tests/README.md) trennt automatische Prüfungen und ausstehende Spieltests. Bestanden für 0.1.4.0: **231 Lua-Prüfungen je unter Lua 5.1 und 5.4**, 14 Python-Prüfungen sowie Validierung von Manifest und I3D gegen offizielle Schemas. Dazu gehören die bisherigen Wiedergabeprüfungen, begrenzte Tabelleninventur, keine Aufrufe entdeckter Funktionen, keine Ausgabe persönlicher Werte sowie einmalige Clientdiagnose. PiP und Ton mit 0.1.3.0 sind im Spiel bestätigt; die neue Laufzeitdiagnose und eine echte Multiplayer-Abnahme stehen noch aus.
+Die [Testanleitung](tests/README.md) trennt automatische Prüfungen und ausstehende Spieltests. Bestanden für 0.1.5.0: **270 Lua-Prüfungen je unter Lua 5.1 und 5.4**, 14 Python-Prüfungen sowie Validierung von Manifest und beiden I3D-Dateien gegen offizielle Schemas. Neu geprüft sind Ressourcenfreigabe, Zeitlimit, Menüabbruch, Fahrzeugwechsel und der Wechsel zwischen Film und Pixeltest. Native Funktionen sind dabei nachgebildet; Shaderkompilierung und sichtbare Pixelausgabe sind damit nicht bewiesen.
 
-## Nächster Schritt zur echten Videoanbindung
+## Jetzt testen: Pixeltransfer auf die Kabinenfläche
 
-Der bereitgestellte [SDK-Bericht](tests/local/video_api_report.json) enthält 819 dokumentierte Funktionen, davon 35 zu Video, Overlays, Texturen und Materialien. Er enthält weder `createVideoOverlay` noch die anderen im Spiel bereits funktionierenden Videoaufrufe. Das Suchmuster würde diese Namen einschließen. Der Bericht ist daher keine vollständige Liste der verfügbaren Spielfunktionen; eine erneute Ausführung desselben Python-Befehls beantwortet die offene Frage nicht.
+1. Das ZIP mit Version 0.1.5.0 installieren und in die Valtra mit Monitor einsteigen.
+2. Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Kein Link und kein zusätzliches Programm sind nötig.
+3. Erwartet ist ein grobes Farbraster mit einem weißen Balken, der von links nach rechts wandert. Die Ecken sind unten links rot, unten rechts grün, oben links blau und oben rechts gelb. Kopf und Kamera bewegen: Das Bild muss auf der Monitorfläche bleiben und normal verdeckt werden.
+4. Nach 20 Sekunden muss der vorherige Bildschirm wieder erscheinen. Ein weiterer Versuch soll beim Aussteigen oder Öffnen eines Menüs sofort enden. Strg + Shift + V soll anschließend den bisherigen Testfilm mit Ton starten; PiP bleibt manuell zuschaltbar.
+5. Ergebnis und `tests/local/log.txt` bereitstellen. Auch ein schwarzes, einfarbiges oder fehlerhaftes Bild ist ein verwertbares Ergebnis. Im Log sind die Zeilen `Pixel probe` und mögliche Shaderfehler wichtig.
+
+Der Pixeltest läuft ausschließlich in der Kabine, ohne Ton oder PiP-Ausgabe. Er ersetzt keinen Videotest. Er erstellt 32 x 18 RGBA-Pixel bis zu zehnmal pro Sekunde, überspringt verspätete Bilder und gibt alte Puffer nach dem Materialwechsel frei. Die temporäre Fläche liegt 0,5 mm vor dem vorhandenen Display. Sie wird erst auf ausdrücklichen Teststart geladen und beim Beenden entfernt. Der bisherige Film wird vor dem Test gestoppt. `tmsPixels` und `tmsPixels stop` sind optionale Konsolenbefehle; die Konsole muss dafür nicht eigens aktiviert werden, weil derselbe Test im Menü erreichbar ist.
+
+Wenn das funktioniert, ist der Weg von CPU-Farbwerten zum echten 3D-Material praktisch belegt. Danach fehlen weiterhin die Gewinnung laufender Decoderbilder, die Synchronisation mit dem Player und die Prüfung einer brauchbaren Auflösung/Bildrate. Ein erfolgreicher Farbtest allein erlaubt noch kein YouTube- oder Twitch-Versprechen. Bei einem Fehler wird zunächst dessen konkrete Ursache anhand des Logs eingegrenzt; eine native Erweiterung ist noch nicht Teil des Mods.
+
+## Grundlage des Experiments
+
+Der ausgewertete SDK-Bericht enthält 819 dokumentierte Funktionen, davon 35 zu Video, Overlays, Texturen und Materialien. Er lässt bereits funktionierende Videoaufrufe aus und ist somit unvollständig. **`tests/local/video_api_report.json` kann gelöscht werden**; weder Build noch Mod noch dieser Test benötigen die Datei. Die relevanten Befunde sind dokumentiert, die Datei wurde hier nicht automatisch gelöscht.
 
 Ein Teil des benötigten Weges ist inzwischen anhand einer offiziellen FS25-Quelle belegt: [MotionPathEffectManager](https://gdn.giants-software.com/documentation_scripting_fs25.php?version=script&category=57&class=545) verwendet `createMaterialTextureFromFile` und `setMaterialCustomMap(material, name, textureEntityId, false)`, gefolgt von `setMaterial`. Eine passende Textur kann also einem Material zugewiesen werden. Auch diese Funktionen fehlen im SDK-Bericht. **Offen ist der Zugriff auf die laufenden Videobilder als solche Textur.** Eine Overlay-ID darf nicht ungeprüft als Textur-ID eingesetzt werden.
 
 Der ebenfalls geprüfte [RenderElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?version=script&category=43&class=480) erzeugt eine HUD-Ansicht einer 3D-Szene. Er belegt keinen umgekehrten Videotransfer auf die Kabinenfläche. Ein verzerrtes HUD-Rechteck würde die geforderte perspektivische Darstellung mit echter Verdeckung nicht ersetzen.
 
-0.1.4.0 sammelt deshalb beim clientseitigen Laden des Spielstands einmal sichtbare Funktionsnamen aus der Lua-Umgebung. Die Zeilen stehen unter `[TractorMediaScreen] API inventory` in `log.txt`. Es werden ausschließlich Namen und Typ-/Abdeckungsangaben protokolliert, keine Links oder Spielerwerte und keine unbekannten Engine-Funktionen aufgerufen. Begrenzte oder geschützte Tabellen werden als Einschränkung gemeldet. Funktionsnamen allein belegen weder Aufrufsignaturen noch funktionierenden Videotransfer.
+Die erfolgreiche Inventur von 0.1.4.0 liefert mit `createTextureBuffer` eine konkrete weitere Spur. Die lokale Binäranalyse des GIANTS Editors 10.0.1 ergibt die Argumentfolge String, Integer, FloatArray und die Erstellung einer Textur-Entity aus den Farbwerten. Das Experiment verwendet entsprechend `createTextureBuffer(name, TextureFormat.R32G32B32A32_FLOAT, colors)`. Es gibt keine Umdeutung einer Video-Overlay-ID. **Diese Signatur ist am lokalen Editor statisch untersucht, aber noch nicht im FS25-1.24-Prozess ausgeführt.** Die [technischen Untersuchungsnotizen](tests/texture_buffer_research.md) halten Herkunft und Grenzen fest.
 
-Für den nächsten Diagnoseversuch genügt: ZIP installieren, Spielstand mit aktivem Mod laden, danach `log.txt` bereitstellen. Ein Traktor, laufendes Video, eine Entwicklerkonsole oder ein weiteres Python-Script sind dafür nicht nötig. Optional wiederholt `tmsApi` die Ausgabe in einer bereits aktivierten Konsole. Ein Dedicated Server führt diese Clientdiagnose nicht aus.
+Der neue eigene Shader liest den linearen Puffer als Pixelraster. Grundstruktur und Emissions-Einschub sind an [FS25-AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive/blob/main/drawing/lineShader.xml) abgeglichen. Die Kompilierung des experimentellen Puffershaders muss im Spiel geprüft werden. Der Versuch braucht weder eine DLL noch einen separat gestarteten Prozess. Die reine Namensinventur bleibt erhalten und führt selbst weiterhin keine entdeckten Funktionen aus.
 
-Erst eine belegte Schnittstelle und ein erfolgreicher Versuch mit unmittelbar übertragenen Decoderbildern erlauben es, die vorbereiteten DDS-Bilder zu entfernen. Die direkte Ausgabe bleibt bis dahin technisch ungeklärt. Das [Python-Werkzeug](tools/inspect_fs25_video_api.py) bleibt für spätere SDK-Vergleiche verfügbar; die bereits erhaltene JSON-Datei wird unverändert aufbewahrt.
+Erst ein erfolgreicher Versuch mit unmittelbar übertragenen Decoderbildern erlaubt es, die vorbereiteten DDS-Bilder zu entfernen. Die direkte Videoausgabe bleibt bis dahin offen. Das [Python-Werkzeug](tools/inspect_fs25_video_api.py) bleibt für spätere SDK-Vergleiche verfügbar.
 
 ## Gewünschtes Ergebnis
 
@@ -168,6 +180,6 @@ Sinnvolle automatisierte Prüfungen betreffen später Linkauswertung, Zustandswe
 
 Für den ersten Versuch reichen dokumentierte Messwerte statt versprochener Leistungszahlen: Bildrate des Spiels ohne/mit Wiedergabe, Bildrate der Videoquelle, CPU-/GPU-Last, Speicherbedarf und wahrnehmbarer Bild-Ton-Versatz. Auflösung und Bildrate werden daraus abgeleitet.
 
-Der nächste praktische Schritt ist das einmalige Laden eines Spielstands mit Diagnoseversion 0.1.4.0 und die Auswertung ihrer `API inventory`-Zeilen. PiP und Ton sind bereits abgenommen. Die direkte Videoanbindung und ein vom Mod nutzbarer YouTube-Player bleiben die entscheidenden offenen Teile.
+Der nächste praktische Schritt ist der oben beschriebene Pixeltransfer-Test mit 0.1.5.0. PiP und Ton des bisherigen Testfilms sind bereits abgenommen. Die direkte Videoanbindung und ein vom Mod nutzbarer YouTube-Player bleiben offen.
 
 Weitere Implementierungsquellen: [FS25 ConfigurationUtil](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=15&class=172&version=script), [VehicleConfigurationItem](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=15&class=176&version=script), [Vehicle](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=91&class=888&version=script), [Courseplay-FS25-Typregistrierung](https://github.com/Courseplay/Courseplay_FS25/blob/150dcd5/Courseplay.lua), [FS25-Dialogaufruf](https://github.com/Courseplay/Courseplay_FS25/blob/150dcd5/scripts/gui/pages/CpCourseManagerFrame.lua), [offizielles Mod-Schema](https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd), [offizielles I3D-Schema](https://i3d.giants.ch/schema/i3d-1.6.xsd). Keine fremden Scripts oder Assets im Paket.

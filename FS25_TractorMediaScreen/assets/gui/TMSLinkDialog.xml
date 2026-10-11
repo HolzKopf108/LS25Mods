@@ -22,10 +22,21 @@
             <maxCharacters value="2048"/>
             <applyProfanityFilter value="false"/>
         </Profile>
+        <Profile name="tmsPixelTestButton" extends="baseReference" with="anchorTopLeft">
+            <position value="44px -214px"/>
+            <size value="912px 40px"/>
+            <textSize value="18px"/>
+            <textAlignment value="center"/>
+            <textColor value="0.9 0.9 0.9 1"/>
+            <imageColor value="0.15 0.15 0.15 1"/>
+            <imageFocusedColor value="0.3 0.3 0.3 1"/>
+            <imageHighlightedColor value="0.3 0.3 0.3 1"/>
+            <handleFocus value="true"/>
+        </Profile>
     </GuiProfiles>
     <GuiElement profile="newLayer"/>
     <Bitmap profile="dialogFullscreenBg"/>
-    <GuiElement profile="fs25_dialogBg" size="1000px 300px">
+    <GuiElement profile="fs25_dialogBg" size="1000px 360px">
         <ThreePartBitmap profile="fs25_dialogBgMiddleSmall"/>
         <ThreePartBitmap profile="fs25_dialogBgTopSmall"/>
         <ThreePartBitmap profile="fs25_dialogBgBottom"/>
@@ -40,6 +51,7 @@
                 <Bitmap profile="fs25_textInputIcon"/>
             </Bitmap>
         </TextInput>
+        <Button profile="tmsPixelTestButton" id="pixelTestButton" onClick="onClickPixelTest" visible="false"/>
         <BoxLayout profile="fs25_dialogButtonBox">
             <Button profile="buttonOK" id="confirmButton" onClick="onClickOk"/>
             <Bitmap profile="fs25_dialogButtonBoxSeparator"/>
