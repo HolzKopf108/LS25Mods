@@ -212,6 +212,32 @@ check(edits[1].shared == false and edits[2].shared == true, "Clone once, then ed
 g_localPlayer = {isOwner = true, getCurrentVehicle = function() return v1 end}
 local apiCaptures, originalCapture = 0, TMSRuntimeApiReport.capture
 local pixelUploads, pixelModelLoads = 0, 0
+-- Renderer internals are tested separately; here verify controller dispatch and
+-- that toggling PiP never creates a second producer or advances the clock.
+local pixelPipPrepares, pixelPipDraws = 0, 0
+TMSPixelPip = {new = function()
+    return {
+        stop = function(self) self.frame, self.material = nil, nil end,
+        setMaterial = function(self, material) self.material = material end,
+        prepare = function(self, material, frame)
+            self.material, self.frame = material, frame
+            pixelPipPrepares = pixelPipPrepares + 1
+            return true
+        end,
+        draw = function(self, material, frame)
+            assert(self.material == material and self.frame == frame, "HUD uses the exact submitted cabin frame")
+            pixelPipDraws = pixelPipDraws + 1
+            return true
+        end
+    }
+end}
+RenderText = {ALIGN_LEFT = 0}
+function setTextColor() end
+function setTextAlignment() end
+function setTextBold() end
+function getCorrectTextSize(size) return size end
+local hudCaption
+function renderText(_, _, _, text) hudCaption = text end
 TextureFormat = {R32G32B32A32_FLOAT = 27}
 function createTextureBuffer(name, format, data)
     assert(type(name) == "string" and format == 27 and #data == 2304)
@@ -317,6 +343,33 @@ check(TractorMediaScreen.pixelProbe.parent == v2[specKey].monitorNode,
     "Pixel surface belongs to local driver's monitor only")
 TractorMediaScreen:update(100)
 check(pixelUploads == 2, "Controller advances the pixel probe without drawing PiP")
+TractorMediaScreen:draw()
+check(pixelPipPrepares == 0 and pixelPipDraws == 0, "Pixel PiP stays inactive until explicitly shown")
+local pixelStartTime = TractorMediaScreen.pixelProbe.elapsed
+local pixelUploadCount = pixelUploads
+TractorMediaScreen.onPip(input, nil, 1)
+TractorMediaScreen:update(0)
+TractorMediaScreen:draw()
+check(TractorMediaScreen.pip and pixelPipDraws == 1 and pixelPipPrepares == 1
+    and hudCaption == "tms_pixelPip", "Pixel mode renders its own synchronized PiP instead of the static pattern")
+check(pixelUploads == pixelUploadCount and TractorMediaScreen.pixelProbe.elapsed == pixelStartTime
+    and TractorMediaScreen.video.id == nil, "Showing PiP does not restart time, upload another image or create a decoder")
+TractorMediaScreen.onPip(input, nil, 1)
+TractorMediaScreen:update(100)
+TractorMediaScreen:draw()
+check(pixelUploads == pixelUploadCount + 1 and pixelPipDraws == 1 and pixelPipPrepares == 1,
+    "Hidden PiP does no rendering while cabin pixels continue")
+TractorMediaScreen.onPip(input, nil, 1)
+TractorMediaScreen:update(0)
+TractorMediaScreen:draw()
+check(pixelPipDraws == 2 and TractorMediaScreen.pixelProbe.pipRenderer.frame == 2,
+    "Showing PiP again uses current cabin frame without rewinding")
+TractorMediaScreen.pixelProbe.pipRenderer.error = "renderer test failure"
+TractorMediaScreen:draw()
+check(hudCaption == "tms_pixelPipFailed" and TractorMediaScreen.pixelProbe.active,
+    "PiP failure is identified in HUD without stopping the cabin test")
+TractorMediaScreen.pixelProbe.pipRenderer.error = nil
+TractorMediaScreen.onPip(input, nil, 1)
 g_gui.getIsGuiVisible = function() return true end
 TractorMediaScreen:update(16)
 check(not TractorMediaScreen.pixelProbe.active and TractorMediaScreen.pixelProbe.root == nil,

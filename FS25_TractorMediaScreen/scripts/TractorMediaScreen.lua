@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.5.0",
+    VERSION = "0.1.6.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -46,13 +46,22 @@ function TractorMediaScreen:loadMap()
     self.cabinVideo = TMSCabinVideo.new(self.modDirectory, TMSCabinClipData, {
         setTexture = TMSVehicle.setDisplayTexture, restore = TMSVehicle.restoreDisplay
     })
+    local pixelPip = TMSPixelPip.new(self.modDirectory, {
+        loadI3DFile = loadI3DFile, getNumOfChildren = getNumOfChildren, getChildAt = getChildAt,
+        getRootNode = getRootNode, link = link, setVisibility = setVisibility,
+        createCamera = createCamera, setTranslation = setTranslation, setRotation = setRotation,
+        setIsOrthographic = setIsOrthographic, setOrthographicHeight = setOrthographicHeight,
+        setMaterial = setMaterial, createRenderOverlay = createRenderOverlay,
+        updateRenderOverlay = updateRenderOverlay, renderOverlay = renderOverlay, delete = delete,
+        atmosphereQualityOff = AtmosphereQuality and AtmosphereQuality.OFF
+    })
     self.pixelProbe = TMSPixelProbe.new(self.modDirectory, {
         createTextureBuffer = createTextureBuffer,
         format = TextureFormat and TextureFormat.R32G32B32A32_FLOAT,
         setMaterialCustomMap = setMaterialCustomMap, getMaterial = getMaterial, setMaterial = setMaterial,
         loadI3DFile = loadI3DFile, getNumOfChildren = getNumOfChildren, getChildAt = getChildAt,
         link = link, setVisibility = setVisibility, delete = delete
-    })
+    }, pixelPip)
     self.overlay = createImageOverlay(self.modDirectory .. "assets/monitor/testPattern.dds")
     Logging.info("[TractorMediaScreen] v%s loaded; GUI video missing APIs: %s; cabin=prepared OGV frames; live 3D video=unavailable; YouTube=unavailable",
         self.VERSION, table.concat(self.video:missingFunctions(), ","))
@@ -117,7 +126,7 @@ function TractorMediaScreen:update(dt)
         return
     end
     if self.pixelProbe ~= nil and self.pixelProbe.active then
-        self.pixelProbe:update(dt)
+        self.pixelProbe:update(dt, self.pip)
         self:showPixelFailure()
         return
     end
@@ -128,12 +137,14 @@ end
 
 function TractorMediaScreen:draw()
     if not self.active or self.vehicle == nil or not self.pip
-        or (self.pixelProbe ~= nil and self.pixelProbe.active)
         or (g_gui ~= nil and g_gui:getIsGuiVisible()) then return end
     local aspect = (g_screenWidth or 1920) / (g_screenHeight or 1080)
     local width = math.min(0.30, 0.48 * 16 / 9 / aspect)
     local x, y, height = 0.98 - width, 0.29, width * aspect * 9 / 16
-    if self.video ~= nil and self.video.state == "playing" then
+    local pixelsActive = self.pixelProbe ~= nil and self.pixelProbe.active
+    if pixelsActive then
+        self.pixelProbe:draw(x, y, width, height)
+    elseif self.video ~= nil and self.video.state == "playing" then
         self.video:draw(x, y, width, height)
     elseif self.overlay ~= nil and self.overlay ~= 0 then
         renderOverlay(self.overlay, x, y, width, height)
@@ -142,7 +153,10 @@ function TractorMediaScreen:draw()
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextBold(false)
     local caption = self.i18n:getText("tms_patternTest")
-    if self.videoProbe ~= nil and self.videoProbe.active then
+    if pixelsActive then
+        local failed = self.pixelProbe.pipRenderer ~= nil and self.pixelProbe.pipRenderer.error ~= nil
+        caption = self.i18n:getText(failed and "tms_pixelPipFailed" or "tms_pixelPip")
+    elseif self.videoProbe ~= nil and self.videoProbe.active then
         if self.video.state == "playing" then
             local key = self.cabinVideo.state == "frames" and "tms_videoTest" or "tms_hudOnlyVideoTest"
             caption = self.i18n:getText(key) .. " (" .. string.upper(self.videoProbe.format) .. ")"
@@ -282,7 +296,7 @@ function TractorMediaScreen:consolePixels(mode)
         if self.pixelProbe ~= nil then self.pixelProbe:stop() end
         return "Pixel probe stopped"
     end
-    return self:startPixelTest() and "Pixel probe started: 20 seconds, cabin only; no video decoder"
+    return self:startPixelTest() and "Pixel probe started: 20 seconds, optional PiP; no video decoder or audio"
         or "Pixel probe could not start; see log.txt"
 end
 

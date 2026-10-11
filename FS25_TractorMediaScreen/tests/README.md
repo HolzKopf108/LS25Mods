@@ -13,6 +13,7 @@ lua FS25_TractorMediaScreen/tests/link_dialog_spec.lua
 lua FS25_TractorMediaScreen/tests/native_video_spec.lua
 lua FS25_TractorMediaScreen/tests/runtime_api_report_spec.lua
 lua FS25_TractorMediaScreen/tests/pixel_probe_spec.lua
+lua FS25_TractorMediaScreen/tests/pixel_pip_spec.lua
 ```
 
 Im Mod-Ordner funktionieren entsprechend `python -m unittest discover -s tests -p "test_*.py" -v` und `lua tests/tractor_media_screen_spec.lua` sowie die übrigen Lua-Specs.
@@ -28,7 +29,7 @@ python tools/check_project.py --python-deps <Testverzeichnis> --mod-schema <modD
 
 Die Platzhalter durch echte Pfade ersetzen. Die beiden XSD-Dateien aus den offiziellen, in der Mod-README verlinkten Quellen beziehen. Keine Testbibliotheken werden ins Mod-ZIP gepackt.
 
-Stand 10.10.2026, Version 0.1.5.0: 270 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (107 Integration, 21 Montage, 20 Kabinenclip, 47 Dialog, 30 Decoder, 21 Laufzeitinventur, 24 Pixelprobe). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und beide I3D-Dateien gegen die offiziellen Schemas validiert. Das ist kein Spieltest und kein Nachweis einer Shaderkompilierung.
+Stand 11.10.2026, Version 0.1.6.0: 311 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (113 Integration, 21 Montage, 20 Kabinenclip, 47 Dialog, 30 Decoder, 21 Laufzeitinventur, 29 Pixelprobe, 30 Pixel-PiP). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und beide I3D-Dateien gegen die offiziellen Schemas validiert. Native Renderfunktionen sind nachgebildet; diese Prüfungen ersetzen den Sichttest des neuen PiP nicht.
 
 ## Auswertung des ersten FS25-Laufs
 
@@ -54,19 +55,26 @@ Das inzwischen ersetzte vierte Protokoll stammt vom 06.10.2026, etwa 17:57 bis 1
 
 ## Auswertung der Laufzeitinventur mit 0.1.4.0
 
-Das aktuelle `local/log.txt` enthält FS25 1.24.0.0 und Version 0.1.4.0. Der Block vom 06.10.2026 um 19:02:53 Uhr meldet `tables=2 entries=4468 functions=2148 selected=138 shown=138 limited=false blockedInheritance=0 missingControlNames=0 environmentFailures=0`. `createTextureBuffer` und die Materialfunktionen sind sichtbar. Es gibt keinen erkennbaren Video-zu-Textur-Aufruf in den erfassten Namen; daraus folgt kein Unmöglichkeitsbeweis.
+Das inzwischen ersetzte Protokoll mit Version 0.1.4.0 enthält FS25 1.24.0.0. Der Block vom 06.10.2026 um 19:02:53 Uhr meldet `tables=2 entries=4468 functions=2148 selected=138 shown=138 limited=false blockedInheritance=0 missingControlNames=0 environmentFailures=0`. `createTextureBuffer` und die Materialfunktionen sind sichtbar. Es gibt keinen erkennbaren Video-zu-Textur-Aufruf in den erfassten Namen; daraus folgt kein Unmöglichkeitsbeweis.
 
 Die Inventur ruft keine entdeckten Funktionen auf und liefert keine Signaturen. Sie liest nur Namen aus erreichbaren Tabellen und meldet Grenzen bzw. bekannte Kontrollfunktionen, die über die Tabellen nicht erfasst wurden. Ein unvollständiger Bericht beweist keine fehlende Fähigkeit. Ebenso wäre ein passender Funktionsname allein noch kein Nachweis für Videotransfer. Dedicated Server führen diese Clientdiagnose nicht aus.
 
-## Nächster Spieltest mit 0.1.5.0
+## Bestätigter Pixeltransfer mit 0.1.5.0
 
-1. ZIP ersetzen und Version 0.1.5.0 kontrollieren. In einen ausgerüsteten Valtra einsteigen, Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Dafür weder Link noch Python-Bericht erzeugen.
-2. Auf der Kabinenfläche werden Farbraster und ein nach rechts wandernder weißer Balken erwartet. Ecken: unten links rot, unten rechts grün, oben links blau, oben rechts gelb. Kopf/Kamera bewegen und echte Perspektive sowie Verdeckung prüfen. Dieser Test hat absichtlich keinen Ton und keine PiP-Ausgabe.
-3. Nach 20 Sekunden soll das vorherige Schwarz-/Testbild wieder sichtbar sein. Wiederholen und währenddessen aussteigen oder ein Menü öffnen: Der Versuch muss sofort enden. Andere Traktoren dürfen das Raster nicht übernehmen.
-4. Danach den bisherigen Film mit Strg + Shift + V starten und PiP mit Strg + Shift + 8 zuschalten. Film und Ton müssen weiterhin funktionieren; PiP darf nicht von selbst starten.
-5. `local/log.txt` durch das neue vollständige Protokoll ersetzen und das sichtbare Ergebnis nennen. Erwartete Diagnosezeilen beginnen mit `Pixel probe begin`, `Pixel probe first buffer submitted` und `Pixel probe stopped`. `submitted` bedeutet nur angenommene Aufrufe, keine bestätigte Bildausgabe. Bei Schwarzbild, falschen Farben oder Shaderfehlern genau dieses Ergebnis melden.
+Das aktuelle `local/log.txt` stammt vom 11.10.2026, FS25 1.24.0.0, Mod-Version 0.1.5.0. Der Versuch von 18:47:46.254 bis 18:48:06.250 endet mit `state=completed uploads=200`; vier kürzere Versuche enden ebenfalls. `TextureFormat.R32G32B32A32_FLOAT` wird als benannter Formatwert 27 übergeben. Das Log enthält keine Texturpuffer- oder Shaderfehler. Die Warnung über nicht binäre IndexedTriangleSets betrifft die eigene temporäre Prototypfläche, nicht den Bildtransfer.
 
-Die [Untersuchungsnotizen](texture_buffer_research.md) erklären die am Editor untersuchte Signatur und die verbleibenden Unbekannten. Der Shader wird nur nach ausdrücklichem Teststart geladen. Die Lua-Prüfungen beweisen weder seine Kompilierung noch die Übertragbarkeit der Editor-Signatur auf das Spiel. Die vorbereiteten DDS-Dateien gehören weiterhin zum bisherigen OGV-Test, während der neue Pixeltest sie nicht liest.
+Der Benutzer bestätigt bewegte Kabinenausgabe, korrekte Perspektive und Ende nach 20 Sekunden beziehungsweise beim Aussteigen. Der Farbtest hatte absichtlich keinen Ton. Die bisherige PiP-Ausblendung war eine Einschränkung im Modcode. Dieser Test bestätigt den laufenden Transfer von CPU-Pixeln zum 3D-Material, aber weder einen Decoder noch eine brauchbare höhere Auflösung/Bildrate.
+
+## Nächster Spieltest mit 0.1.6.0
+
+1. ZIP ersetzen und Version 0.1.6.0 kontrollieren. Frisch in einen ausgerüsteten Valtra einsteigen, Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Kein Link und kein Python-Bericht nötig. PiP muss zunächst aus bleiben.
+2. Mit Strg + Shift + 8 PiP einblenden. Kabine und PiP müssen dasselbe Farbraster und denselben Balkenstand zeigen. Ecken: unten links rot, unten rechts grün, oben links blau, oben rechts gelb. Bild darf weder gespiegelt noch beschnitten sein. Farb-/Helligkeitsabweichungen melden.
+3. Mehrfach aus-/einblenden und zwischen Innen- und Außenansicht wechseln. Kein Neustart oder Zurückspringen des Balkens; die Kabine läuft bei verborgenem PiP weiter. Der Pixeltest bleibt absichtlich stumm.
+4. Nach insgesamt 20 Sekunden muss das Raster auf beiden Ausgaben enden. Wiederholen und aussteigen oder ein Menü öffnen: beide Ausgaben enden sofort. Andere Traktoren dürfen das Raster nicht übernehmen.
+5. Den bisherigen Film mit Strg + Shift + V starten und PiP mit Strg + Shift + 8 zuschalten. Film und Ton müssen weiterhin funktionieren. Ein Teststart erhält nur die zuvor manuell gewählte PiP-Sichtbarkeit.
+6. `local/log.txt` durch das neue vollständige Protokoll ersetzen und das sichtbare Ergebnis nennen. Relevant sind `Pixel probe`, `Pixel PiP first render submitted` und mögliche `Pixel PiP unavailable`-/Shader-Meldungen. `submitted` bezeichnet angenommene Aufrufe; erst die Sichtprüfung bestätigt die tatsächliche Ausgabe. Bei PiP-Fehler soll der Kabinentest weiterlaufen.
+
+Die [Untersuchungsnotizen](texture_buffer_research.md) trennen Editor-Befund, bestätigte Kabinenausgabe und noch offenen PiP-Sichttest. PiP besitzt eine eigene orthografische Szene, teilt aber Material und Puffer mit der Kabine. Seine Szene wird erst bei sichtbarem PiP angelegt und bei verborgenem PiP nicht aktualisiert. Die vorbereiteten DDS-Dateien gehören weiterhin zum OGV-Test; der Pixeltest liest sie nicht.
 
 ## Wiedergabe bei späteren Änderungen erneut prüfen
 

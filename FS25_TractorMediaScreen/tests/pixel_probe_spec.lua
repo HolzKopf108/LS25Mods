@@ -108,4 +108,42 @@ laterState.failBind = false
 check(later:start(600) and laterState.parent == 600, "An explicit new attempt can recover")
 later:stop()
 check(next(laterState.live) == nil, "Retried probe also releases all resources")
+
+local synced, syncedState = fixture()
+local pip = {prepared = 0, drawn = 0, stopped = 0}
+function pip:stop()
+    self.stopped = self.stopped + 1
+    self.material = nil
+end
+function pip:setMaterial(material) self.material = material end
+function pip:prepare(material, frame)
+    assert(self.material == material)
+    self.prepared = self.prepared + 1; self.frame = frame
+    return true
+end
+function pip:draw(material, frame)
+    assert(self.material == material and self.frame == frame)
+    self.drawn = self.drawn + 1
+    return true
+end
+synced.pipRenderer = pip
+synced:start(500); synced:update(0, false)
+check(pip.prepared == 0, "Hidden PiP does not prepare a render target")
+synced:update(0, true); synced:draw(0, 0, .3, .2)
+check(pip.frame == synced.frame and pip.material == synced.material and syncedState.calls == 1,
+    "Both displays share the submitted material and frame, with a single producer")
+synced:update(150, false)
+check(pip.prepared == 1 and synced.frame == 1 and syncedState.calls == 2,
+    "Hiding PiP leaves the producer running")
+synced:update(0, true)
+check(pip.frame == 1 and syncedState.calls == 2, "Reshow refreshes existing frame without extra buffer")
+local stopCount = pip.stopped
+local originalDelete = synced.api.delete
+synced.api.delete = function(id)
+    assert(pip.stopped == stopCount + 1, "PiP material owner must be released before the cabin texture")
+    originalDelete(id)
+end
+synced:stop()
+check(not synced:draw(0, 0, .3, .2) and next(syncedState.live) == nil,
+    "Stopping removes both outputs before releasing last buffer")
 print(string.format("TractorMediaScreen pixel probe: %d checks passed (%s)", count, _VERSION))

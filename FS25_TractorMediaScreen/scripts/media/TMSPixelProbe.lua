@@ -1,12 +1,13 @@
 -- Experimental CPU pixels -> texture buffer -> material, never a video decoder.
--- Constructor argument types were inspected in GE 10.0.1, not run in FS25 yet.
+-- The 32x18 cabin path was confirmed by the player in FS25 1.24 on 2026-10-11.
 TMSPixelProbe = {}
 TMSPixelProbe.__index = TMSPixelProbe
 TMSPixelProbe.WIDTH, TMSPixelProbe.HEIGHT = 32, 18
 TMSPixelProbe.INTERVAL, TMSPixelProbe.DURATION = 100, 20000
 
-function TMSPixelProbe.new(directory, api)
-    return setmetatable({directory = directory, api = api, state = "idle", serial = 0}, TMSPixelProbe)
+function TMSPixelProbe.new(directory, api, pipRenderer)
+    return setmetatable({directory = directory, api = api, pipRenderer = pipRenderer,
+        state = "idle", serial = 0}, TMSPixelProbe)
 end
 
 function TMSPixelProbe.pixels(frame)
@@ -31,6 +32,8 @@ end
 function TMSPixelProbe:stop(reason)
     local wasActive = self.active
     self.active = false
+    -- PiP shares our material. Release its scene before the final texture.
+    if self.pipRenderer ~= nil then self.pipRenderer:stop() end
     -- Remove the material's owner before releasing its last texture entity.
     for _, key in ipairs({"root", "pendingTexture", "texture"}) do
         local id = self[key]
@@ -72,6 +75,8 @@ function TMSPixelProbe:upload(frame)
     end
     api.setMaterial(self.node, material, 0)
     self.material = material
+    -- Both surfaces must release a replaced material before the previous buffer.
+    if self.pipRenderer ~= nil then self.pipRenderer:setMaterial(material) end
     if self.texture ~= nil then api.delete(self.texture) end
     self.texture, self.pendingTexture = texture, nil
     self.frame, self.uploads = frame, self.uploads + 1
@@ -110,14 +115,23 @@ function TMSPixelProbe:start(parent)
     return true
 end
 
-function TMSPixelProbe:update(dt)
+function TMSPixelProbe:update(dt, showPip)
     if not self.active then return end
     if type(dt) ~= "number" or dt ~= dt or dt < 0 or dt == math.huge then return end
     self.elapsed = self.elapsed + dt
     if self.elapsed >= TMSPixelProbe.DURATION then self:stop("completed"); return end
     local frame = math.floor(self.elapsed / TMSPixelProbe.INTERVAL)
-    if frame == self.frame then return end
     -- Skip stale frames after a slow update; never enqueue a catch-up burst.
-    local ok, reason = pcall(self.upload, self, frame)
-    if not ok then self:fail(reason) end
+    if frame ~= self.frame then
+        local ok, reason = pcall(self.upload, self, frame)
+        if not ok then self:fail(reason); return end
+    end
+    -- Redraw the existing material only when PiP is requested. No second clock,
+    -- texture upload, or decoder is created, even when PiP is shown repeatedly.
+    if showPip and self.pipRenderer ~= nil then self.pipRenderer:prepare(self.material, self.frame) end
+end
+
+function TMSPixelProbe:draw(x, y, width, height)
+    if not self.active or self.pipRenderer == nil then return false end
+    return self.pipRenderer:draw(self.material, self.frame, x, y, width, height)
 end
