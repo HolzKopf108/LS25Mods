@@ -40,13 +40,13 @@ function TMSPixelProbe:stop(reason)
         self[key] = nil
         if id ~= nil then
             local ok, detail = pcall(self.api.delete, id)
-            if not ok then Logging.warning("[TractorMediaScreen] Pixel probe cleanup failed: %s", tostring(detail)) end
+            if not ok then TMSLog.warning("[TractorMediaScreen] Pixel probe cleanup failed: %s", tostring(detail)) end
         end
     end
     self.node, self.material, self.parent = nil, nil, nil
     self.state = reason or "idle"
     if wasActive then
-        Logging.info("[TractorMediaScreen] Pixel probe stopped: reason=%s uploads=%d; visual result requires player confirmation",
+        TMSLog.info("[TractorMediaScreen] Pixel probe stopped: reason=%s uploads=%d; visual result requires player confirmation",
             self.state, self.uploads or 0)
     end
 end
@@ -54,7 +54,7 @@ end
 function TMSPixelProbe:fail(reason)
     self:stop("failed")
     self.error = tostring(reason)
-    Logging.warning("[TractorMediaScreen] Pixel probe failed: %s", self.error)
+    TMSLog.warning("[TractorMediaScreen] Pixel probe failed: %s", self.error)
     return false
 end
 
@@ -95,7 +95,7 @@ function TMSPixelProbe:start(parent)
     end
     if parent == nil or parent == 0 then return self:fail("monitor not attached") end
     self.serial, self.elapsed, self.frame, self.uploads = self.serial + 1, 0, nil, 0
-    Logging.info("[TractorMediaScreen] Pixel probe begin: 32x18 RGBA float, 10 uploads/s, 20s; format=%s; no image files or decoder",
+    TMSLog.info("[TractorMediaScreen] Pixel probe begin: 32x18 RGBA float, 10 uploads/s, 20s; format=%s; no image files or decoder",
         tostring(api.format))
     local ok, reason = pcall(function()
         local root = api.loadI3DFile(self.directory .. "assets/pixelProbe/screen.i3d", false, false, false)
@@ -111,7 +111,7 @@ function TMSPixelProbe:start(parent)
     end)
     if not ok then return self:fail(reason) end
     self.active, self.state = true, "running"
-    Logging.info("[TractorMediaScreen] Pixel probe first buffer submitted to material; not a visual success check")
+    TMSLog.info("[TractorMediaScreen] Pixel probe first buffer submitted to material; not a visual success check")
     return true
 end
 

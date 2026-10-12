@@ -1,6 +1,7 @@
 -- Transform/lifecycle regression tests. Real Valtra placement still needs a game test.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 local unpack = table.unpack or unpack
 local count = 0
 local function check(condition, message)

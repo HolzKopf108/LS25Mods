@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.6.0",
+    VERSION = "0.1.7.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -53,6 +53,10 @@ function TractorMediaScreen:loadMap()
         setIsOrthographic = setIsOrthographic, setOrthographicHeight = setOrthographicHeight,
         setMaterial = setMaterial, createRenderOverlay = createRenderOverlay,
         updateRenderOverlay = updateRenderOverlay, renderOverlay = renderOverlay, delete = delete,
+        setOverlayUVs = setOverlayUVs, setOverlayColor = setOverlayColor,
+        getIsOverlayReady = getIsOverlayReady, getVisibility = getVisibility, getMaterial = getMaterial,
+        getTranslation = getTranslation, getRotation = getRotation,
+        getIsOrthographic = getIsOrthographic, getOrthographicHeight = getOrthographicHeight,
         atmosphereQualityOff = AtmosphereQuality and AtmosphereQuality.OFF
     })
     self.pixelProbe = TMSPixelProbe.new(self.modDirectory, {
@@ -63,7 +67,7 @@ function TractorMediaScreen:loadMap()
         link = link, setVisibility = setVisibility, delete = delete
     }, pixelPip)
     self.overlay = createImageOverlay(self.modDirectory .. "assets/monitor/testPattern.dds")
-    Logging.info("[TractorMediaScreen] v%s loaded; GUI video missing APIs: %s; cabin=prepared OGV frames; live 3D video=unavailable; YouTube=unavailable",
+    TMSLog.info("[TractorMediaScreen] v%s loaded; GUI video missing APIs: %s; cabin=prepared OGV frames; live 3D video=unavailable; YouTube=unavailable",
         self.VERSION, table.concat(self.video:missingFunctions(), ","))
     addConsoleCommand("tmsStatus", "Tractor Media Screen: local diagnostic status", "consoleStatus", self)
     addConsoleCommand("tmsMount", "Monitor position: x y z rx ry rz (meters/degrees)", "consoleMount", self)
@@ -191,7 +195,7 @@ function TractorMediaScreen.registerActionEvents(input, context)
     local seen = TractorMediaScreen.registeredContexts or {}
     TractorMediaScreen.registeredContexts = seen
     if not seen[key] then
-        Logging.info("[TractorMediaScreen] Local input registered: %d/4 (%s)", count, tostring(key))
+        TMSLog.info("[TractorMediaScreen] Local input registered: %d/4 (%s)", count, tostring(key))
         seen[key] = true
     end
 end
@@ -207,6 +211,9 @@ function TractorMediaScreen.onPip(input, name, value)
     if not TractorMediaScreen.canHandle(input, value) then return end
     local self = TractorMediaScreen
     self.pip = not self.pip
+    TMSLog.info("[TractorMediaScreen] PiP toggled: visible=%s mode=%s frame=%s",
+        tostring(self.pip), self.pixelProbe ~= nil and self.pixelProbe.active and "pixels" or "video/pattern",
+        self.pixelProbe ~= nil and tostring(self.pixelProbe.frame) or "none")
     -- PiP visibility never creates/stops the cabin playback or its audio.
 end
 
@@ -223,10 +230,10 @@ end
 function TractorMediaScreen.onVideoTest(input, name, value)
     local self = TractorMediaScreen
     if not self.canHandle(input, value) then
-        Logging.info("[TractorMediaScreen] Video hotkey ignored: no equipped local vehicle or menu/input blocked")
+        TMSLog.info("[TractorMediaScreen] Video hotkey ignored: no equipped local vehicle or menu/input blocked")
         return
     end
-    Logging.info("[TractorMediaScreen] Video hotkey received")
+    TMSLog.info("[TractorMediaScreen] Video hotkey received")
     if self.videoProbe.active then self:stopVideoTest(); return end
     self:startVideoTest("auto")
     self:showVideoFailure()
@@ -248,7 +255,7 @@ function TractorMediaScreen:onLinkEntered(text, clickOk, generation, action)
     if self.getLocalVehicle() ~= self.vehicle or self.vehicle == nil then return end
     if action == "pixels" then self:startPixelTest(); return end
     if action == "videoTest" then
-        Logging.info("[TractorMediaScreen] Video test requested from media menu")
+        TMSLog.info("[TractorMediaScreen] Video test requested from media menu")
         self:startVideoTest("auto")
         self:showVideoFailure()
         return
@@ -315,14 +322,15 @@ end
 
 function TractorMediaScreen:consoleApi()
     if not self.active then return "No client session" end
+    if not TMSLog.DEBUG then return "Debug logging disabled (TMSLog.DEBUG=false)" end
     -- The SDK omits functions that already work in the player's game.
     -- Inspect visible names only; never guess a native call or handle type.
     local ok, result = pcall(function()
         local report = TMSRuntimeApiReport.capture()
-        TMSRuntimeApiReport.write(report, function(line) Logging.info("%s", line) end)
+        TMSRuntimeApiReport.write(report, function(line) TMSLog.info("%s", line) end)
     end)
     if not ok then
-        Logging.warning("[TractorMediaScreen] API inventory failed: %s", tostring(result))
+        TMSLog.warning("[TractorMediaScreen] API inventory failed: %s", tostring(result))
         return "Runtime API inventory failed; see log.txt"
     end
     return "Visible function names written to log.txt; no video-to-material support inferred"
@@ -366,6 +374,7 @@ function TractorMediaScreen:consoleMount(x, y, z, rx, ry, rz)
 end
 
 function TractorMediaScreen:consoleNodes()
+    if not TMSLog.DEBUG then return "Debug logging disabled (TMSLog.DEBUG=false)" end
     local vehicle = self:refreshVehicle()
     if vehicle == nil then return "No equipped local vehicle" end
     local names = {}
@@ -376,7 +385,7 @@ function TractorMediaScreen:consoleNodes()
         end
     end
     table.sort(names)
-    Logging.info("[TractorMediaScreen] Candidate mappings: %s", table.concat(names, ", "))
+    TMSLog.info("[TractorMediaScreen] Candidate mappings: %s", table.concat(names, ", "))
     return "Candidate mappings written to log.txt; mount uses the fixed interior camera parent"
 end
 

@@ -21,7 +21,7 @@ function TMSCabinVideo:unavailable(reason)
     end
     self.state = reason
     if not self.warned then
-        Logging.warning("[TractorMediaScreen] Cabin clip unavailable: %s (HUD playback may continue)", reason)
+        TMSLog.warning("[TractorMediaScreen] Cabin clip unavailable: %s (HUD playback may continue)", reason)
         self.warned = true
     end
 end
@@ -54,7 +54,7 @@ function TMSCabinVideo:update(vehicle, video, format)
     end
     self.state = "frames"
     if not self.started then
-        Logging.info("[TractorMediaScreen] Cabin clip active: prepared OGV frames, %dfps, %dx%d, decoderTime=%.3fs",
+        TMSLog.info("[TractorMediaScreen] Cabin clip active: prepared OGV frames, %dfps, %dx%d, decoderTime=%.3fs",
             self.data.fps, self.data.width, self.data.height, seconds)
         self.started = true
     end

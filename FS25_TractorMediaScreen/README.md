@@ -1,6 +1,6 @@
 # Tractor Media Screen
 
-Stand: 11.10.2026. Experimentelle Version **0.1.6.0** für FS25. Der Benutzer hat den laufenden Pixeltransfer auf die Kabinenfläche mit 0.1.5.0 bestätigt, einschließlich Perspektive und automatischem Ende. Neu ist die zuschaltbare **Bild-in-Bild-Ausgabe desselben Pixelpuffers**. Sie benötigt noch einen Spieltest. Der Pixeltest erzeugt seine Farbwerte laufend, ohne Bilddateien, und ist absichtlich ohne Ton. Er enthält keinen Videodecoder. Der bisherige OGV-Testfilm nutzt in der Kabine weiterhin vorbereitete Einzelbilder; sein Ton und das optionale PiP sind bestätigt. **Decoderanbindung und YouTube bleiben offen.**
+Stand: 12.10.2026. Experimentelle Version **0.1.7.0** für FS25. Die Kabinenausgabe des Pixeltests ist bestätigt. PiP blieb im Test mit 0.1.6.0 transparent, obwohl das Log angenommene Renderaufrufe zeigte. Die neue Version ergänzt die im FS25-RenderElement vorgesehenen Bildkoordinaten, setzt volle Deckkraft und verwendet einen undurchsichtigen Renderausgang. Zusätzlich sind alle mod-eigenen Logs zentral abschaltbar. **Der PiP-Sichttest steht noch aus.** Der Pixeltest bleibt absichtlich ohne Ton und ohne Videodecoder. Der bisherige OGV-Testfilm mit Ton funktioniert laut Benutzer weiterhin. **Decoderanbindung und YouTube bleiben offen.**
 
 ## Aktueller Prototyp
 
@@ -22,11 +22,11 @@ Der eigene Linkdialog hat ein breites URL-Feld für bis zu 2048 Zeichen ohne Wor
 
 Die Dialoganbindung wurde mit den FS25-Klassen [TextInputElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=498&version=script), [Gui](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=436&version=script) und [FrameElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=433&version=script) abgeglichen. Grundlage des Montageankers ist [VehicleCamera](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=91&class=891&version=engine). Die Videoreihenfolge entspricht weiterhin dem dokumentierten `VideoElement`; zusätzliche Fehleranzeigen und Formatversuche ersetzen keinen Laufzeittest.
 
-Das [aktuelle Testprotokoll](tests/local/log.txt) enthält Version 0.1.5.0 unter FS25 **1.24.0.0** vom 11.10.2026. Von 18:47:46 bis 18:48:06 läuft ein vollständiger Pixeltest mit 200 Übertragungen; mehrere kürzere Versuche werden ebenfalls beendet. Es gibt keine Fehler beim Texturpuffer oder Shader. Der Benutzer bestätigt das sichtbare Kabinenbild, seine Perspektive und das Ende nach 20 Sekunden beziehungsweise beim Aussteigen. Ton war in diesem reinen Farbtest nicht vorgesehen. PiP wurde bisher ausdrücklich ausgeblendet; genau diese Lücke behebt 0.1.6.0. Die neue Ausgabe ist noch nicht im Spiel geprüft.
+Das [aktuelle Testprotokoll](tests/local/log.txt) enthält Version 0.1.6.0 unter FS25 **1.24.0.0** vom 11.10.2026, etwa 20:09 bis 20:12 Uhr. Zwei Pixeltests enden mit jeweils 200 Übertragungen. PiP meldet bei Bild 29 beziehungsweise 0 den ersten Renderaufruf, ohne Lua- oder Shaderfehler. Der Benutzer sah trotzdem nur den Titel und einen transparenten Bildbereich; die Kabine und der normale Film mit Ton funktionierten. Das beweist, dass angenommene Aufrufe allein keine Bildausgabe belegen. Die fehlende UV-Zuweisung ist eine konkrete Abweichung vom offiziellen RenderElement; ob sie das beobachtete Ergebnis vollständig erklärt, muss der neue Spieltest klären.
 
 ## Installation und Bedienung des Prototyps
 
-FS25 schließen, genau das ZIP aus `dist/` in das verwendete Mods-Verzeichnis legen, nicht entpacken und im Spielstand aktivieren. Version **0.1.6.0** in der Mod-Liste prüfen. Zunächst einen Testspielstand verwenden. Alle Teilnehmer und der Server benötigen dieselbe Mod-Version. Es wurden keine Spielprofil-Dateien verändert und kein Paket automatisch installiert.
+FS25 schließen, genau das ZIP aus `dist/` in das verwendete Mods-Verzeichnis legen, nicht entpacken und im Spielstand aktivieren. Version **0.1.7.0** in der Mod-Liste prüfen. Zunächst einen Testspielstand verwenden. Alle Teilnehmer und der Server benötigen dieselbe Mod-Version. Es wurden keine Spielprofil-Dateien verändert und kein Paket automatisch installiert.
 
 Im Shop die Basisspiel-Valtra S-Serie und **Medienbildschirm: Mit Monitor (Prototyp)** auswählen. Auch der Umbau eines vorhandenen Fahrzeugs in der Werkstatt ist zu prüfen. Die Aktionen greifen nur im eigenen unterstützten Fahrzeug mit eingebautem Monitor. Sie bleiben im F1-Menü verborgen und sind im Steuerungsmenü änderbar.
 
@@ -45,22 +45,34 @@ Beim Aussteigen, Fahrzeugwechsel oder Öffnen eines Spielmenüs stoppt der Film.
 
 Wenn die Entwicklerkonsole bereits aktiviert ist: `tmsStatus` zeigt zusätzlich Kabinenstatus, Playerzeit und Bildnummer. `cabin=frames` bedeutet, dass Materialwechsel ausgeführt werden; es ist kein Beleg für das sichtbare Ergebnis. `tmsVideo` oder `tmsVideo auto` startet die automatische Auswahl; `tmsVideo ogv`, `tmsVideo mp4` und `tmsVideo webm` testen einzelne Formate. `tmsVideo stop` beendet die Probe. `tmsMount` zeigt Position und Winkel relativ zum Kabinenanker; `tmsMount x y z rx ry rz` ändert sie in Metern und Grad für diese Fahrzeuginstanz ohne Speicherung. `tmsNodes` schreibt vorhandene Kabinen-/Innenraum-/Kameramappings nach `log.txt`.
 
-Die [Testanleitung](tests/README.md) trennt automatische Prüfungen und ausstehende Spieltests. Bestanden für 0.1.6.0: **311 Lua-Prüfungen je unter Lua 5.1 und 5.4**, 14 Python-Prüfungen sowie Validierung von Manifest und beiden I3D-Dateien gegen offizielle Schemas. Neu geprüft sind gemeinsame Bildstände, PiP-Umschaltung ohne Neustart, Ressourcenfreigabe und begrenzte Fehlerbehandlung. Native Funktionen sind dabei nachgebildet; die neue PiP-Bildausgabe braucht einen Sichttest.
+Die [Testanleitung](tests/README.md) trennt automatische Prüfungen und ausstehende Spieltests. Bestanden für 0.1.7.0: **327 Lua-Prüfungen je unter Lua 5.1 und 5.4**, 14 Python-Prüfungen sowie Validierung von Manifest und beiden I3D-Dateien gegen offizielle Schemas. Neu geprüft sind UV-/Deckkraft-Zuweisung, begrenzte Diagnoseausgaben, fehlertolerante Abfragen und der Debug-Schalter. Native Funktionen sind dabei nachgebildet; die korrigierte PiP-Bildausgabe braucht einen Sichttest.
 
 ## Jetzt testen: Pixeltransfer mit Bild-in-Bild
 
-1. Das ZIP mit Version 0.1.6.0 installieren und frisch in die Valtra mit Monitor einsteigen.
+1. Das ZIP mit Version 0.1.7.0 installieren und frisch in die Valtra mit Monitor einsteigen. Debug ist im Paket bereits eingeschaltet.
 2. Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Kein Link und kein zusätzliches Programm sind nötig.
 3. Das bekannte Farbraster muss in der Kabine laufen; PiP bleibt zunächst aus. Mit **Strg + Shift + 8** einblenden: Erwartet wird dasselbe Raster mit demselben Balkenstand, flach und vollständig im HUD. Ecken: unten links rot, unten rechts grün, oben links blau und oben rechts gelb. Auf Spiegelung, Zuschnitt und Farbabweichungen achten.
 4. PiP mehrfach aus-/einblenden und zwischen Innen- und Außenansicht wechseln. Der Balken darf dadurch nicht neu starten; in der Kabine muss das Bild perspektivisch korrekt weiterlaufen. Der Pixeltest hat weiterhin keinen Ton.
 5. Nach insgesamt 20 Sekunden muss das Raster auf beiden Ausgaben enden. Erneut starten und aussteigen oder ein Menü öffnen: Der Versuch muss sofort enden. Strg + Shift + V soll anschließend den bisherigen Testfilm mit Ton starten; PiP bleibt manuell zuschaltbar.
-6. Ergebnis und `tests/local/log.txt` bereitstellen. Bei schwarzem oder fehlerhaftem PiP angeben, ob die Kabinenausgabe trotzdem weiterläuft. Relevant sind `Pixel probe`, `Pixel PiP` und mögliche Shaderfehler.
+6. Ergebnis und `tests/local/log.txt` bereitstellen. Bei fehlendem PiP-Bild ausdrücklich angeben, ob der Bereich schwarz oder weiterhin transparent ist und ob die Kabine weiterläuft. Relevant sind `Pixel PiP setup`, `update`, `first draw`, `rectangle`, `stop`, `PiP toggled` sowie mögliche Shaderfehler. Es ist kein weiterer Python-Bericht nötig.
 
 Der Pixeltest erstellt 32 x 18 RGBA-Pixel bis zu zehnmal pro Sekunde, überspringt verspätete Bilder und gibt alte Puffer nach dem Materialwechsel frei. Die temporäre Kabinenfläche liegt 0,5 mm vor dem vorhandenen Display. PiP verwendet eine eigene orthografische Szene mit demselben privaten Material und demselben Texturpuffer. Die flache Ansicht wird nur bei sichtbarem PiP und geändertem Bildstand aktualisiert. Es gibt keinen zweiten Pixelerzeuger oder Zeitgeber. Die 512 x 288 große Renderfläche vergrößert das Raster, erhöht aber nicht dessen Detailauflösung. Grundlage ist [FS25 RenderElement](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=480&version=engine).
 
 Der Teststart erhält die manuelle PiP-Auswahl; er schaltet sie nicht selbst ein. Ein PiP-Fehler wird einmal protokolliert und im HUD benannt, während der Kabinentest weiterlaufen darf. Beim Beenden werden PiP-Szene und Kabinenfläche vor dem letzten Puffer freigegeben. Der bisherige Film wird vor dem Test gestoppt. `tmsPixels` und `tmsPixels stop` bleiben optionale Konsolenbefehle; der Test ist im Menü erreichbar.
 
 Der Weg von laufenden CPU-Farbwerten zum 3D-Material ist durch den Benutzertest jetzt praktisch belegt. Nach dem PiP-Abgleich folgt eine echte Decoderquelle mit begrenztem Transfer der jeweils aktuellen Bilder. Dafür fehlen noch die Datenanbindung, die Synchronisation mit dem Ton und Messungen für brauchbare Auflösung/Bildrate. Ein Browser könnte später laufende Pixel liefern, wäre aber ein zusätzlicher Prozess; automatischer Start und Integration sind bisher nicht festgelegt. Ein erfolgreicher Farbtest allein ist noch keine YouTube- oder Twitch-Wiedergabe.
+
+## Debug-Meldungen ein- und ausschalten
+
+Die einzige Einstellung steht in [scripts/TMSLog.lua](scripts/TMSLog.lua):
+
+```lua
+TMSLog = {DEBUG = true}
+```
+
+Für die Fehlersuche `true` verwenden. Für eine spätere Version ohne mod-eigene Logmeldungen auf `false` setzen und mit `python tools/build_tractor_media_screen.py` neu bauen. Das schaltet alle bisherigen und neuen Info-/Warn-/Fehlermeldungen des Mods ab. HUD-Fehleranzeigen, Fehlerbehandlung und Ressourcenfreigabe bleiben aktiv. Engine-Meldungen und Meldungen anderer Mods werden nicht verändert; ausdrücklich aufgerufene Konsolenbefehle behalten ihre Antwort.
+
+Die automatische API-Inventur und optionalen PiP-Diagnoseabfragen laufen nur bei eingeschaltetem Debug. PiP protokolliert Szenen-/Kameraeinstellungen, tatsächliche Overlay-Bereitschaft, Materialzuweisung, Sichtbarkeit, Bildstand sowie Render-/Zeichenzähler. Fortschrittsmeldungen erfolgen höchstens alle fünf Sekunden der Pixelquelle. Abfragefehler werden als solche vermerkt und stoppen die Bildausgabe nicht. Ein `ready=true` oder steigende Zähler beweisen weiterhin keine sichtbaren Pixel.
 
 ## Grundlage des Experiments
 
@@ -183,6 +195,6 @@ Sinnvolle automatisierte Prüfungen betreffen später Linkauswertung, Zustandswe
 
 Für den ersten Versuch reichen dokumentierte Messwerte statt versprochener Leistungszahlen: Bildrate des Spiels ohne/mit Wiedergabe, Bildrate der Videoquelle, CPU-/GPU-Last, Speicherbedarf und wahrnehmbarer Bild-Ton-Versatz. Auflösung und Bildrate werden daraus abgeleitet.
 
-Der nächste praktische Schritt ist der oben beschriebene PiP-Abgleich des Pixeltransfers mit 0.1.6.0. Die Kabinenausgabe des Pixeltests sowie PiP und Ton des bisherigen Testfilms sind bereits abgenommen. Danach fehlt eine laufende Decoderquelle vor dem bestätigten Pixeltransport. Ein vom Mod nutzbarer YouTube-Player bleibt offen.
+Der nächste praktische Schritt ist der oben beschriebene PiP-Abgleich der Korrektur mit 0.1.7.0. Die Kabinenausgabe des Pixeltests sowie PiP und Ton des bisherigen Testfilms sind bereits abgenommen. Danach fehlt eine laufende Decoderquelle vor dem bestätigten Pixeltransport. Ein vom Mod nutzbarer YouTube-Player bleibt offen.
 
 Weitere Implementierungsquellen: [FS25 ConfigurationUtil](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=15&class=172&version=script), [VehicleConfigurationItem](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=15&class=176&version=script), [Vehicle](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=91&class=888&version=script), [Courseplay-FS25-Typregistrierung](https://github.com/Courseplay/Courseplay_FS25/blob/150dcd5/Courseplay.lua), [FS25-Dialogaufruf](https://github.com/Courseplay/Courseplay_FS25/blob/150dcd5/scripts/gui/pages/CpCourseManagerFrame.lua), [offizielles Mod-Schema](https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd), [offizielles I3D-Schema](https://i3d.giants.ch/schema/i3d-1.6.xsd). Keine fremden Scripts oder Assets im Paket.

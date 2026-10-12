@@ -14,6 +14,7 @@ lua FS25_TractorMediaScreen/tests/native_video_spec.lua
 lua FS25_TractorMediaScreen/tests/runtime_api_report_spec.lua
 lua FS25_TractorMediaScreen/tests/pixel_probe_spec.lua
 lua FS25_TractorMediaScreen/tests/pixel_pip_spec.lua
+lua FS25_TractorMediaScreen/tests/logging_spec.lua
 ```
 
 Im Mod-Ordner funktionieren entsprechend `python -m unittest discover -s tests -p "test_*.py" -v` und `lua tests/tractor_media_screen_spec.lua` sowie die übrigen Lua-Specs.
@@ -29,7 +30,7 @@ python tools/check_project.py --python-deps <Testverzeichnis> --mod-schema <modD
 
 Die Platzhalter durch echte Pfade ersetzen. Die beiden XSD-Dateien aus den offiziellen, in der Mod-README verlinkten Quellen beziehen. Keine Testbibliotheken werden ins Mod-ZIP gepackt.
 
-Stand 11.10.2026, Version 0.1.6.0: 311 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (113 Integration, 21 Montage, 20 Kabinenclip, 47 Dialog, 30 Decoder, 21 Laufzeitinventur, 29 Pixelprobe, 30 Pixel-PiP). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und beide I3D-Dateien gegen die offiziellen Schemas validiert. Native Renderfunktionen sind nachgebildet; diese Prüfungen ersetzen den Sichttest des neuen PiP nicht.
+Stand 12.10.2026, Version 0.1.7.0: 327 Lua-Prüfungen je mit Lua 5.1 und 5.4 bestanden (115 Integration, 21 Montage, 20 Kabinenclip, 47 Dialog, 30 Decoder, 21 Laufzeitinventur, 29 Pixelprobe, 37 Pixel-PiP, 7 Logger). 14 Python-Prüfungen für Geometrie, DDS/Mipmaps, Dateiauswahl, exakte ZIP-/Quellgleichheit, Quellvideo-/Framehashes, decodierte Audiopegel und API-Berichtsparser bestanden. Der Pakettest prüft zusätzlich die frühe Logger-Ladereihenfolge und verhindert direkte mod-eigene Logging-Aufrufe außerhalb des zentralen Loggers. Die beiden Audiotests benötigen optional FFmpeg/ffprobe und werden bei fehlenden Werkzeugen übersprungen. Normaler Build und Spielen benötigen diese Werkzeuge nicht. Manifest und beide I3D-Dateien gegen die offiziellen Schemas validiert. Native Renderfunktionen sind nachgebildet; diese Prüfungen ersetzen den Sichttest des korrigierten PiP nicht.
 
 ## Auswertung des ersten FS25-Laufs
 
@@ -61,20 +62,28 @@ Die Inventur ruft keine entdeckten Funktionen auf und liefert keine Signaturen. 
 
 ## Bestätigter Pixeltransfer mit 0.1.5.0
 
-Das aktuelle `local/log.txt` stammt vom 11.10.2026, FS25 1.24.0.0, Mod-Version 0.1.5.0. Der Versuch von 18:47:46.254 bis 18:48:06.250 endet mit `state=completed uploads=200`; vier kürzere Versuche enden ebenfalls. `TextureFormat.R32G32B32A32_FLOAT` wird als benannter Formatwert 27 übergeben. Das Log enthält keine Texturpuffer- oder Shaderfehler. Die Warnung über nicht binäre IndexedTriangleSets betrifft die eigene temporäre Prototypfläche, nicht den Bildtransfer.
+Das inzwischen ersetzte Protokoll mit Mod-Version 0.1.5.0 stammt vom 11.10.2026, FS25 1.24.0.0. Der Versuch von 18:47:46.254 bis 18:48:06.250 endet mit `reason=completed uploads=200`; vier kürzere Versuche enden ebenfalls. `TextureFormat.R32G32B32A32_FLOAT` wird als benannter Formatwert 27 übergeben. Das Log enthält keine Texturpuffer- oder Shaderfehler. Die Warnung über nicht binäre IndexedTriangleSets betrifft die eigene temporäre Prototypfläche, nicht den Bildtransfer.
 
 Der Benutzer bestätigt bewegte Kabinenausgabe, korrekte Perspektive und Ende nach 20 Sekunden beziehungsweise beim Aussteigen. Der Farbtest hatte absichtlich keinen Ton. Die bisherige PiP-Ausblendung war eine Einschränkung im Modcode. Dieser Test bestätigt den laufenden Transfer von CPU-Pixeln zum 3D-Material, aber weder einen Decoder noch eine brauchbare höhere Auflösung/Bildrate.
 
-## Nächster Spieltest mit 0.1.6.0
+## Transparentes PiP mit 0.1.6.0
 
-1. ZIP ersetzen und Version 0.1.6.0 kontrollieren. Frisch in einen ausgerüsteten Valtra einsteigen, Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Kein Link und kein Python-Bericht nötig. PiP muss zunächst aus bleiben.
+Das aktuelle `local/log.txt` enthält den Lauf vom 11.10.2026 etwa 20:09 bis 20:12 Uhr, Version 0.1.6.0 unter FS25 1.24.0.0. Zwei vollständige Pixeltests melden je 200 Uploads. `Pixel PiP first render submitted` erscheint um 20:11:00.913 bei Bild 29 und um 20:11:28.768 bei Bild 0. Ein Abbruch oder Lua-/Shaderfehler ist nicht protokolliert. Der Benutzer bestätigt trotzdem nur die sichtbare Überschrift bei transparentem Bildbereich; Kabinenraster und OGV samt Ton funktionieren.
+
+Der Abgleich mit dem offiziellen RenderElement zeigt die fehlende Zuweisung vollständiger Overlay-UVs vor dem Zeichnen. 0.1.7.0 ergänzt diese und setzt Weiß mit voller Deckkraft. Der Renderausgang verwendet `useAlpha=false`, weil ein vollständiges Monitorbild keine transparente Szenenmaske benötigt. Die fehlende Initialisierung ist belegt; die genaue Ursache des transparenten Bildes ist damit noch nicht im Spiel nachgewiesen. Neue Diagnosezeilen trennen Erzeugung, Aktualisierung und tatsächlichen Zeichenaufruf.
+
+## Nächster Spieltest mit 0.1.7.0
+
+1. ZIP ersetzen und Version 0.1.7.0 kontrollieren. `TMSLog.DEBUG` ist im Paket bereits `true`. Frisch in einen ausgerüsteten Valtra einsteigen, Strg + Shift + 7 drücken und **Pixeltransfer testen (20 s)** wählen. Kein Link und kein Python-Bericht nötig. PiP muss zunächst aus bleiben.
 2. Mit Strg + Shift + 8 PiP einblenden. Kabine und PiP müssen dasselbe Farbraster und denselben Balkenstand zeigen. Ecken: unten links rot, unten rechts grün, oben links blau, oben rechts gelb. Bild darf weder gespiegelt noch beschnitten sein. Farb-/Helligkeitsabweichungen melden.
 3. Mehrfach aus-/einblenden und zwischen Innen- und Außenansicht wechseln. Kein Neustart oder Zurückspringen des Balkens; die Kabine läuft bei verborgenem PiP weiter. Der Pixeltest bleibt absichtlich stumm.
 4. Nach insgesamt 20 Sekunden muss das Raster auf beiden Ausgaben enden. Wiederholen und aussteigen oder ein Menü öffnen: beide Ausgaben enden sofort. Andere Traktoren dürfen das Raster nicht übernehmen.
 5. Den bisherigen Film mit Strg + Shift + V starten und PiP mit Strg + Shift + 8 zuschalten. Film und Ton müssen weiterhin funktionieren. Ein Teststart erhält nur die zuvor manuell gewählte PiP-Sichtbarkeit.
-6. `local/log.txt` durch das neue vollständige Protokoll ersetzen und das sichtbare Ergebnis nennen. Relevant sind `Pixel probe`, `Pixel PiP first render submitted` und mögliche `Pixel PiP unavailable`-/Shader-Meldungen. `submitted` bezeichnet angenommene Aufrufe; erst die Sichtprüfung bestätigt die tatsächliche Ausgabe. Bei PiP-Fehler soll der Kabinentest weiterlaufen.
+6. `local/log.txt` durch das neue vollständige Protokoll ersetzen und das sichtbare Ergebnis nennen. Relevant sind `Pixel probe`, `PiP toggled`, `Pixel PiP setup`, `update`, `first draw`, `rectangle`, `stop` und mögliche `Pixel PiP unavailable`-/Shader-Meldungen. Bei fehlendem Bild zwischen schwarzem und weiterhin transparentem Bereich unterscheiden. Steigende Render-/Zeichenzähler und `ready=true` sind keine Sichtbestätigung. Bei PiP-Fehler soll der Kabinentest weiterlaufen.
 
 Die [Untersuchungsnotizen](texture_buffer_research.md) trennen Editor-Befund, bestätigte Kabinenausgabe und noch offenen PiP-Sichttest. PiP besitzt eine eigene orthografische Szene, teilt aber Material und Puffer mit der Kabine. Seine Szene wird erst bei sichtbarem PiP angelegt und bei verborgenem PiP nicht aktualisiert. Die vorbereiteten DDS-Dateien gehören weiterhin zum OGV-Test; der Pixeltest liest sie nicht.
+
+Für einen späteren Test ohne Diagnoseausgaben in `scripts/TMSLog.lua` `DEBUG = false` setzen und neu bauen. Automatisiert geprüft: alle Logstufen schweigen, globale Engine-Logger bleiben erhalten, Inventur und optionale Renderabfragen werden ausgelassen; Wiedergabe und Fehlerfreigabe bleiben aktiv. Native Engine-Warnungen sowie Antworten ausdrücklich aufgerufener Konsolenbefehle fallen nicht unter diesen Mod-Schalter.
 
 ## Wiedergabe bei späteren Änderungen erneut prüfen
 

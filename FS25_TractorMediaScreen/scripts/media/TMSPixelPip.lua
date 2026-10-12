@@ -9,7 +9,7 @@ TMSPixelPip.__index = TMSPixelPip
 TMSPixelPip.REQUIRED = {"loadI3DFile", "getNumOfChildren", "getChildAt", "getRootNode",
     "link", "setVisibility", "createCamera", "setTranslation", "setRotation",
     "setIsOrthographic", "setOrthographicHeight", "createRenderOverlay",
-    "updateRenderOverlay", "renderOverlay", "setMaterial", "delete"}
+    "updateRenderOverlay", "renderOverlay", "setOverlayUVs", "setOverlayColor", "setMaterial", "delete"}
 
 local function integer(value, minimum)
     return type(value) == "number" and value == value and value < math.huge
@@ -21,7 +21,30 @@ local function detail(value)
 end
 
 function TMSPixelPip.new(directory, api)
-    return setmetatable({directory = directory, api = api or {}, renderCount = 0}, TMSPixelPip)
+    return setmetatable({directory = directory, api = api or {}, renderCount = 0,
+        drawCount = 0, skippedDrawCount = 0}, TMSPixelPip)
+end
+
+-- Optional readbacks are diagnostics only. Missing/failed getters must not
+-- disable playback, and DEBUG=false must not call any of them.
+local function read(api, name, ...)
+    if type(api[name]) ~= "function" then return "unavailable" end
+    if select(1, ...) == nil then return "not-created" end
+    local values = {pcall(api[name], ...)}
+    if not values[1] then return "readback-error:" .. detail(values[2]) end
+    local result = {}
+    for i = 2, #values do result[#result + 1] = detail(values[i]) end
+    return #result > 0 and table.concat(result, ",") or "nil"
+end
+
+function TMSPixelPip:report(stage, frame)
+    if not TMSLog.DEBUG then return end
+    local api = self.api
+    TMSLog.info("[TractorMediaScreen] Pixel PiP %s: frame=%s renders=%d draws=%d skipped=%d overlay=%s ready=%s material=%s/%s sceneVisible=%s surfaceVisible=%s",
+        stage, tostring(frame), self.renderCount, self.drawCount, self.skippedDrawCount,
+        tostring(self.overlay), read(api, "getIsOverlayReady", self.overlay),
+        tostring(self.material), read(api, "getMaterial", self.node, 0),
+        read(api, "getVisibility", self.scene), read(api, "getVisibility", self.node))
 end
 
 function TMSPixelPip:release()
@@ -44,14 +67,16 @@ function TMSPixelPip:fail(reason)
     self:release()
     if self.error == nil then
         self.error = detail(reason)
-        Logging.warning("[TractorMediaScreen] Pixel PiP unavailable: %s; cabin output continues", self.error)
+        TMSLog.warning("[TractorMediaScreen] Pixel PiP unavailable: %s; cabin output continues", self.error)
     end
     return false
 end
 
 function TMSPixelPip:stop()
+    if self.scene ~= nil then self:report("stop", self.lastFrame) end
     local failure = self:release()
-    self.error, self.renderCount = nil, 0
+    self.error, self.renderCount, self.drawCount, self.skippedDrawCount = nil, 0, 0, 0
+    self.lastReportFrame = nil
     if failure ~= nil then self:fail(failure) end
 end
 
@@ -79,6 +104,7 @@ function TMSPixelPip:create(material)
     if api.getNumOfChildren(scene) ~= 1 then error("unexpected PiP model") end
     self.node = api.getChildAt(scene, 0)
     if not integer(self.node, 1) then error("PiP surface unavailable") end
+    api.setVisibility(self.node, true)
     api.link(api.getRootNode(), scene)
     api.setMaterial(self.node, material, 0)
     self.material = material
@@ -94,10 +120,18 @@ function TMSPixelPip:create(material)
     api.setRotation(camera, 0, 0, 0)
     api.setIsOrthographic(camera, true)
     api.setOrthographicHeight(camera, 0.144)
+    -- A complete monitor image is opaque. Do not depend on the scene pass's
+    -- output alpha, which is unrelated to the source pixel buffer's alpha.
     local overlay = api.createRenderOverlay(scene, camera, 16 / 9, 512, 288,
-        true, 255, 67108864, false, 0, false, 0, false, api.atmosphereQualityOff)
+        false, 255, 67108864, false, 0, false, 0, false, api.atmosphereQualityOff)
     if not integer(overlay, 1) then error("PiP overlay creation failed") end
     self.overlay = overlay
+    if TMSLog.DEBUG then
+        TMSLog.info("[TractorMediaScreen] Pixel PiP setup: scene=%s surface=%s camera=%s overlay=%s target=512x288 useAlpha=false shapesMask=255; cameraPosition=%s cameraRotation=%s orthographic=%s height=%s; source=cabin-material",
+            tostring(scene), tostring(self.node), tostring(camera), tostring(overlay),
+            read(api, "getTranslation", camera), read(api, "getRotation", camera),
+            read(api, "getIsOrthographic", camera), read(api, "getOrthographicHeight", camera))
+    end
 end
 
 function TMSPixelPip:prepare(material, frame)
@@ -112,8 +146,9 @@ function TMSPixelPip:prepare(material, frame)
         if self.lastFrame ~= frame then
             self.api.updateRenderOverlay(self.overlay)
             self.lastFrame, self.renderCount = frame, self.renderCount + 1
-            if self.renderCount == 1 then
-                Logging.info("[TractorMediaScreen] Pixel PiP first render submitted: 512x288; shared cabin material; frame=%d; verify visible output", frame)
+            if self.lastReportFrame == nil or frame - self.lastReportFrame >= 50 then
+                self:report("update", frame)
+                self.lastReportFrame = frame
             end
         end
     end)
@@ -123,9 +158,22 @@ end
 
 function TMSPixelPip:draw(material, frame, x, y, width, height)
     if self.error ~= nil or self.overlay == nil or material ~= self.material or frame ~= self.lastFrame then
+        self.skippedDrawCount = self.skippedDrawCount + 1
         return false
     end
-    local ok, reason = pcall(self.api.renderOverlay, self.overlay, x, y, width, height)
+    local ok, reason = pcall(function()
+        -- FS25 RenderElement explicitly assigns these UVs immediately before
+        -- drawing. Render targets must not rely on image-overlay defaults.
+        self.api.setOverlayUVs(self.overlay, 0, 0, 0, 1, 1, 0, 1, 1)
+        self.api.setOverlayColor(self.overlay, 1, 1, 1, 1)
+        self.api.renderOverlay(self.overlay, x, y, width, height)
+    end)
     if not ok then return self:fail(reason) end
+    self.drawCount = self.drawCount + 1
+    if self.drawCount == 1 then
+        self:report("first draw", frame)
+        TMSLog.info("[TractorMediaScreen] Pixel PiP rectangle: x=%.4f y=%.4f width=%.4f height=%.4f; UV=0,0/0,1/1,0/1,1 RGBA=1,1,1,1; submitted calls are not a visual confirmation",
+            x, y, width, height)
+    end
     return true
 end

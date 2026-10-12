@@ -1,10 +1,10 @@
 # Untersuchung des Texturpuffers
 
-Stand 11.10.2026. Diese Notizen unterscheiden den ursprünglichen statischen Editor-Befund vom inzwischen bestätigten Kabinenbild im Spiel. Die neue PiP-Ansicht ist noch nicht visuell geprüft.
+Stand 12.10.2026. Diese Notizen unterscheiden den ursprünglichen statischen Editor-Befund vom bestätigten Kabinenbild im Spiel. PiP mit 0.1.6.0 blieb im Benutzertest transparent; die Korrektur mit 0.1.7.0 braucht den nächsten Sichttest.
 
 ## Belege
 
-Das ursprünglich vom Benutzer bereitgestellte Protokoll zeigte FS25 1.24.0.0 mit Mod 0.1.4.0. Die Inventur vom 06.10.2026 um 19:02:53 erfasst 2.148 Funktionen und nennt `createTextureBuffer`, `setMaterialCustomMap` und `createMaterialTextureFromFile`. Sie meldet keine Begrenzung und keine fehlenden Kontrollnamen. Objektmethoden, die erst nach dem Erzeugen eines Objekts existieren, werden damit nicht vollständig untersucht. Das aktuelle `local/log.txt` enthält den unten ausgewerteten Test mit 0.1.5.0.
+Das ursprünglich vom Benutzer bereitgestellte Protokoll zeigte FS25 1.24.0.0 mit Mod 0.1.4.0. Die Inventur vom 06.10.2026 um 19:02:53 erfasst 2.148 Funktionen und nennt `createTextureBuffer`, `setMaterialCustomMap` und `createMaterialTextureFromFile`. Sie meldet keine Begrenzung und keine fehlenden Kontrollnamen. Objektmethoden, die erst nach dem Erzeugen eines Objekts existieren, werden damit nicht vollständig untersucht. Das aktuelle `local/log.txt` enthält inzwischen den Test mit 0.1.6.0; ältere Befunde bleiben unten dokumentiert.
 
 Die lokal installierte Originaldatei `C:\Program Files\GIANTS Software\GIANTS_Editor_10.0.1\editor.exe` wurde ausschließlich gelesen, nicht verändert. SHA256: `97e90aff44fd47bd886e8cfa1a4cdaf3a89c210ebc2b113253fefaeb3afd569a`. Die PE-Strukturen wurden mit Python-Standardbibliothek gelesen, eng begrenzte Funktionsbereiche mit GNU objdump betrachtet. Kein Code oder Asset dieser Installation wird ins Mod-Paket übernommen.
 
@@ -44,6 +44,16 @@ Der Test enthält keine Tonquelle und keinen Videodecoder. Das bisher fehlende P
 Die neue Umsetzung verwendet eine zweite Fläche mit genau der privaten Material-ID des Kabinenrasters. Eine eigene orthografische Kamera blickt senkrecht auf sie. Es entstehen weder ein zweiter Texturpuffer noch eine zweite Pixelquelle. Die aktuelle Bildnummer kennzeichnet, wann das Renderziel aktualisiert werden muss. `prepare` läuft während des Updates nur bei sichtbarem PiP; `draw` zeichnet nur den dazu passenden Bildstand. Ein PiP-Fehler gibt seine Ressourcen frei und lässt den Kabinentest weiterlaufen.
 
 Die Tests prüfen Lifecycle, Materialbesitz, Freigabereihenfolge, gemeinsame Bildstände und Fehlerbegrenzung mit nachgebildeten Engine-Funktionen. Offen bleiben die echte PiP-Ausgabe dieses Puffershaders, Ausrichtung/Zuschnitt, Helligkeit und GPU-Verbrauch. Der bisher bestätigte Kabinenpfad ist von diesen offenen Punkten getrennt.
+
+## PiP-Befund und Korrektur, Version 0.1.7.0
+
+Der Benutzertest mit 0.1.6.0 am 11.10.2026 gegen 20:11 Uhr zeigt kein PiP-Bild, nur den Titel bei transparentem Rechteck. Die beiden erfolgreichen ersten Renderaufrufe und je 200 Kabinenuploads sind protokolliert, ohne Lua- oder Shaderfehler. Daraus lässt sich nicht ablesen, ob die Renderfläche Pixel enthält oder richtig abgetastet wird.
+
+Der erneute Quellenabgleich zeigt: `RenderElement:draw` setzt unmittelbar vor jedem `renderOverlay` vollständige UVs mit `setOverlayUVs(overlay, 0,0, 0,1, 1,0, 1,1)`. Dieser Schritt fehlte in 0.1.6.0. Er wird nun ausdrücklich ausgeführt, ergänzt um volle weiße Overlay-Deckkraft. `useAlpha=false` passt zum vollständig undurchsichtigen Monitorbild und vermeidet Abhängigkeit von der Alpha-Ausgabe des Szenenpasses. Die Kabinenszene, Kameraausrichtung und Pixelquelle bleiben gleich. Ob die fehlenden UVs oder die Alpha-Behandlung das beobachtete Ergebnis erklären, bleibt bis zum neuen Sichttest offen.
+
+Die Kameraausrichtung wurde zusätzlich am Originalscript `GIANTS_Editor_10.0.1/scripts/camera/saveBillboards.lua` abgeglichen: Kamera vor einer nach +Z gerichteten Fläche, Position auf +Z, Rotation null und orthografische Höhe gleich Bildhöhe. Es wurde kein neuer Editor-Sichttest ausgeführt. Die verborgene Szenenwurzel entspricht dem FS25-RenderElement; die eigene Bildfläche wird ausdrücklich sichtbar gesetzt.
+
+Mit `TMSLog.DEBUG=true` protokolliert 0.1.7.0 Setup, Bild-/Zeichenzähler und begrenzte Fortschrittsabfragen. [FS25 getIsOverlayReady](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=17&function=382&version=engine) belegt die optionale Bereitschaftsabfrage. Kamerawerte, Material-ID und Sichtbarkeit werden zurückgelesen, soweit die Getter vorhanden sind. Fehler dieser Diagnoseabfragen brechen die Wiedergabe nicht ab. Die Diagnosen können keinen GPU-Pixelinhalt prüfen und melden deshalb ausdrücklich keine visuelle Bestätigung. Mit `DEBUG=false` entfallen sowohl die Logs als auch diese zusätzlichen nativen Abfragen.
 
 ## Danach: laufende Decoderbilder
 

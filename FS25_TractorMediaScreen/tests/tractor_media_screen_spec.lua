@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 or 5.4. Game objects are simulated; this is not a game test.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 local count = 0
 local function check(condition, message)
     assert(condition, message)
@@ -261,6 +262,10 @@ end
 TractorMediaScreen:loadMap()
 TractorMediaScreen:update(16)
 check(apiCaptures == 1 and commands.tmsApi, "Client collects runtime function names once at map load")
+TMSLog.DEBUG = false
+check(TractorMediaScreen:consoleApi():find("disabled", 1, true) and apiCaptures == 1,
+    "Disabled debug skips even an explicit inventory instead of collecting data silently")
+TMSLog.DEBUG = true
 check(pixelUploads == 0 and pixelModelLoads == 0, "Map load never executes the experimental native path")
 local input = {player = g_localPlayer}
 TractorMediaScreen.registerActionEvents(input, "VEHICLE")
@@ -397,6 +402,13 @@ check(not mapPixelProbe.active and mapPixelProbe.root == nil and TractorMediaScr
     "Map cleanup releases a running pixel probe")
 check(next(commands) == nil, "Map cleanup unregisters console commands")
 check(apiCaptures == 1, "Video starts, menus and vehicle changes do not repeat the API inventory")
+
+TMSLog.DEBUG = false
+TractorMediaScreen:loadMap()
+check(TractorMediaScreen.active and TractorMediaScreen.video ~= nil and apiCaptures == 1,
+    "Release configuration still loads the mod without scanning runtime globals")
+TractorMediaScreen:deleteMap()
+TMSLog.DEBUG = true
 
 g_dedicatedServer = {}
 local beforeOverlay = overlays

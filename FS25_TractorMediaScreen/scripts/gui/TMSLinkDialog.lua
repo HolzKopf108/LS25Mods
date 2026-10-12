@@ -20,7 +20,7 @@ function TMSLinkDialog.register(modDirectory)
     local ok, gui = pcall(g_gui.loadGui, g_gui,
         modDirectory .. "assets/gui/TMSLinkDialog.xml", TMSLinkDialog.GUI_NAME, instance)
     if not ok or gui == nil then
-        Logging.warning("[TractorMediaScreen] Could not load the local URL dialog")
+        TMSLog.warning("[TractorMediaScreen] Could not load the local URL dialog")
         return false
     end
     TMSLinkDialog.instance = instance

@@ -95,7 +95,7 @@ function TMSVehicle:onLoadFinished()
     spec.mount = TMSVehicle.resolveCabinMount(self, spec.profile)
     spec.mountFinished = true
     if spec.mount == nil then
-        Logging.warning("[TractorMediaScreen] No fixed indoor camera reference for profile=%s; monitor not attached",
+        TMSLog.warning("[TractorMediaScreen] No fixed indoor camera reference for profile=%s; monitor not attached",
             spec.profile.id)
     end
     TMSVehicle.attachMonitor(self, spec)
@@ -103,7 +103,7 @@ end
 
 function TMSVehicle.onMonitorLoaded(vehicle, i3dNode, failedReason, spec)
     if i3dNode == nil or i3dNode == 0 then
-        Logging.warning("[TractorMediaScreen] Monitor I3D could not be loaded")
+        TMSLog.warning("[TractorMediaScreen] Monitor I3D could not be loaded")
         return
     end
     if spec.deleted or getNumOfChildren(i3dNode) == 0 then delete(i3dNode); return end
@@ -128,7 +128,7 @@ function TMSVehicle.attachMonitor(vehicle, spec)
     -- The model's display faces local +Z. Aim that normal at the original eye point.
     setDirection(monitor, d[1], d[2], d[3], u[1], u[2], u[3])
     spec.pattern = false
-    Logging.info("[TractorMediaScreen] Monitor loaded: profile=%s, mount=indoor-reference, parent=%s, camera=%d, position=%.3f %.3f %.3f",
+    TMSLog.info("[TractorMediaScreen] Monitor loaded: profile=%s, mount=indoor-reference, parent=%s, camera=%d, position=%.3f %.3f %.3f",
         spec.profile.id, tostring(parent), mount.cameraIndex, p[1], p[2], p[3])
 end
 
@@ -159,7 +159,7 @@ function TMSVehicle.setDisplayTexture(vehicle, filename)
         spec.displayMaterial or getMaterial(spec.displayNode, 0), filename,
         false, true, spec.displayMaterial ~= nil)
     if not ok or material == nil or material == 0 then
-        Logging.warning("[TractorMediaScreen] Display material update failed")
+        TMSLog.warning("[TractorMediaScreen] Display material update failed")
         return false
     end
     setMaterial(spec.displayNode, material, 0)

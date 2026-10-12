@@ -1,6 +1,7 @@
 -- Resource/lifecycle tests. Mocked calls do not validate a native binding or shader.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 dofile(mod .. "/scripts/media/TMSPixelProbe.lua")
 local count = 0
 local function check(value, message) assert(value, message); count = count + 1 end

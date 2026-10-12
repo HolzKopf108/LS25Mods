@@ -1,6 +1,7 @@
 -- Native rendering is mocked. These checks cover isolation and resource lifetime.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 dofile(mod .. "/scripts/media/TMSPixelPip.lua")
 local count = 0
 local function check(value, message) assert(value, message); count = count + 1 end
@@ -9,7 +10,7 @@ Logging = {warning = function() warnings = warnings + 1 end,
     info = function() reports = reports + 1 end}
 
 local function fixture()
-    local state = {live = {}, deletes = {}, loads = 0, updates = 0, draws = 0, assignments = 0}
+    local state = {live = {}, deletes = {}, loads = 0, updates = 0, draws = 0, assignments = 0, readbacks = 0}
     local api = {atmosphereQualityOff = 4} -- arbitrary named enum value, never guessed in production
     function api.loadI3DFile(filename, physics, onCreate, callUserAttributes)
         assert(filename == mod .. "/assets/pixelProbe/screen.i3d")
@@ -17,7 +18,10 @@ local function fixture()
         state.loads = state.loads + 1
         state.live[10] = true; return 10
     end
-    function api.setVisibility(id, visible) assert(id == 10 and not visible); state.hidden = true end
+    function api.setVisibility(id, visible)
+        if id == 10 then assert(not visible); state.hidden = true
+        else assert(id == 11 and visible); state.surfaceVisible = true end
+    end
     function api.getNumOfChildren(id) assert(id == 10); return state.badModel and 2 or 1 end
     function api.getChildAt(id, index) assert(id == 10 and index == 0); return 11 end
     function api.getRootNode() return 999 end
@@ -46,7 +50,7 @@ local function fixture()
     function api.createRenderOverlay(scene, camera, aspect, resX, resY, alpha, shapeMask, lightMask,
         shadows, bloom, dof, ssao, async, atmosphere)
         assert(scene == 10 and camera == 20 and aspect == 16 / 9 and resX == 512 and resY == 288)
-        assert(alpha and shapeMask == 255 and lightMask == 67108864 and not shadows)
+        assert(not alpha and shapeMask == 255 and lightMask == 67108864 and not shadows)
         assert(bloom == 0 and not dof and ssao == 0 and not async and atmosphere == api.atmosphereQualityOff)
         if state.failOverlay then return 0 end
         state.live[30] = true; return 30
@@ -58,8 +62,26 @@ local function fixture()
     end
     function api.renderOverlay(overlay, x, y, width, height)
         assert(overlay == 30 and x == 0.7 and y == 0.3 and width == 0.25 and height == 0.25)
+        assert(state.uvsSet and state.colorSet, "A render target must set full image UVs and opacity before every HUD draw")
         if state.failDraw then error("overlay draw rejected") end
         state.draws = state.draws + 1
+        state.uvsSet, state.colorSet = false, false
+    end
+    function api.setOverlayUVs(overlay, ...)
+        assert(overlay == 30)
+        if state.failUVs then error("UV update rejected") end
+        assert(table.concat({...}, ",") == "0,0,0,1,1,0,1,1", "Full RenderElement UV range")
+        state.uvsSet = true
+    end
+    function api.setOverlayColor(overlay, r, g, b, a)
+        assert(overlay == 30 and r == 1 and g == 1 and b == 1 and a == 1)
+        state.colorSet = true
+    end
+    function api.getIsOverlayReady(overlay)
+        assert(overlay == 30)
+        state.readbacks = state.readbacks + 1
+        if state.failReadback then error("readback rejected") end
+        return true
     end
     function api.delete(id)
         assert(state.live[id], "Each owned entity is released only once")
@@ -84,10 +106,12 @@ check(state.loads == 0 and pip.overlay == nil, "Construction never loads hidden 
 check(not pip:draw(40, 0, 0.7, 0.3, 0.25, 0.25) and state.loads == 0,
     "Draw before update does not create a scene or show stale content")
 check(pip:setMaterial(40) and state.assignments == 0, "Cabin uploads do not instantiate hidden PiP")
-check(draw(pip) and state.hidden and state.material == 40, "First visible update uses own hidden scene and shared material")
-check(state.loads == 1 and state.updates == 1 and state.draws == 1 and reports == 1,
-    "First visible frame renders exactly once and reports submission")
-check(draw(pip) and state.updates == 1 and state.draws == 2 and reports == 1,
+check(draw(pip) and state.hidden and state.surfaceVisible and state.material == 40,
+    "First visible update hides the scene from the world but enables its surface")
+local firstReports = reports
+check(state.loads == 1 and state.updates == 1 and state.draws == 1 and reports > 0 and state.readbacks > 0,
+    "First visible frame renders exactly once and reports actual readbacks")
+check(draw(pip) and state.updates == 1 and state.draws == 2 and reports == firstReports,
     "Unchanged frames reuse the rendered overlay without repeated reports")
 check(draw(pip, 40, 1) and state.loads == 1 and state.updates == 2, "Changed frame updates existing scene once")
 check(not pip:draw(40, 2, 0.7, 0.3, 0.25, 0.25) and state.updates == 2 and state.draws == 3,
@@ -158,4 +182,34 @@ local rejectedDraw, rejectedDrawState = fixture()
 rejectedDrawState.failDraw = true
 check(not draw(rejectedDraw) and next(rejectedDrawState.live) == nil,
     "HUD drawing failure releases resources and is contained")
+
+local rejectedUV, rejectedUVState = fixture()
+rejectedUVState.failUVs = true
+check(not draw(rejectedUV) and next(rejectedUVState.live) == nil and rejectedUVState.draws == 0,
+    "Failed UV initialization is contained without drawing a misleading empty overlay")
+local missingUV, missingUVState, missingUVApi = fixture()
+missingUVApi.setOverlayUVs = nil
+check(not draw(missingUV) and missingUVState.loads == 0, "Missing required UV API fails before allocations")
+
+local diagnostic, diagnosticState = fixture()
+draw(diagnostic)
+local initialReports = reports
+for frame = 1, 49 do draw(diagnostic, 40, frame) end
+check(reports == initialReports, "Diagnostics do not spam log for every frame")
+draw(diagnostic, 40, 50)
+check(reports == initialReports + 1, "Progress readback is limited to one per five seconds of source time")
+diagnosticState.failReadback = true
+check(draw(diagnostic, 40, 100) and diagnostic.error == nil,
+    "Optional readiness getter failure cannot stop pixel rendering")
+diagnostic:stop()
+
+local quiet, quietState = fixture()
+TMSLog.DEBUG = false
+local quietReports, quietWarnings = reports, warnings
+check(draw(quiet) and quietState.readbacks == 0 and reports == quietReports,
+    "Disabled debug performs no diagnostic readbacks or logging while rendering still works")
+quietState.failDraw = true
+check(not draw(quiet) and quiet.error ~= nil and warnings == quietWarnings and next(quietState.live) == nil,
+    "Disabling logs preserves error containment and cleanup")
+TMSLog.DEBUG = true
 print(string.format("TractorMediaScreen pixel PiP: %d checks passed (%s)", count, _VERSION))

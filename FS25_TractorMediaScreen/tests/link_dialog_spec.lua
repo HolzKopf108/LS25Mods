@@ -1,6 +1,7 @@
 -- FS25 view objects are simulated. Rendering still requires an in-game check.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 local checks = 0
 local function check(condition, message)
     assert(condition, message)

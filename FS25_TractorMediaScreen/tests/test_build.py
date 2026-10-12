@@ -16,7 +16,10 @@ spec.loader.exec_module(builder)
 class AssetsAndPackage(unittest.TestCase):
     def test_runtime_selection(self):
         files, version = builder.runtime_files()
-        self.assertEqual(version, "0.1.6.0")
+        self.assertEqual(version, "0.1.7.0")
+        self.assertIn("scripts/TMSLog.lua", files)
+        desc = ET.parse(MOD / "modDesc.xml").getroot()
+        self.assertEqual(desc.find("extraSourceFiles/sourceFile").get("filename"), "scripts/TMSLog.lua")
         self.assertIn("scripts/vehicle/TMSVehicle.lua", files)
         self.assertIn("scripts/media/TMSNativeVideo.lua", files)
         self.assertIn("scripts/media/TMSRuntimeApiReport.lua", files)
@@ -30,6 +33,9 @@ class AssetsAndPackage(unittest.TestCase):
         self.assertIn("assets/gui/TMSLinkDialog.xml", files)
         self.assertFalse(any(name.startswith(("tests/", "tools/", "dist/")) for name in files))
         self.assertFalse(any(name.endswith((".svg", ".png", ".md", ".py")) for name in files))
+        for name in files:
+            if name.startswith("scripts/") and name.endswith(".lua") and name != "scripts/TMSLog.lua":
+                self.assertNotRegex((MOD / name).read_text(encoding="utf-8"), r"\bLogging\.(info|warning|error)\s*\(", name)
 
     def test_display_geometry_and_faces(self):
         model = ET.parse(MOD / "assets/monitor/monitor.i3d").getroot()

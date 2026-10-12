@@ -20,7 +20,7 @@ function TMSVideoProbe:recordFailure()
     local failure = self.video.lastError or {reason = "nativeError", operation = "unknown", detail = self.video.state}
     table.insert(self.failures, {format = self.format, reason = failure.reason,
         operation = failure.operation, detail = failure.detail})
-    Logging.warning("[TractorMediaScreen] Video %s failed: %s (%s): %s",
+    TMSLog.warning("[TractorMediaScreen] Video %s failed: %s (%s): %s",
         tostring(self.format), tostring(failure.reason), tostring(failure.operation), tostring(failure.detail))
 end
 
@@ -28,7 +28,7 @@ function TMSVideoProbe:nextFormat()
     while self.index < #self.formats do
         self.index = self.index + 1
         self.format = self.formats[self.index]
-        Logging.info("[TractorMediaScreen] Video attempt %d/%d: %s; volume=%.2f; file=%sassets/media/test.%s",
+        TMSLog.info("[TractorMediaScreen] Video attempt %d/%d: %s; volume=%.2f; file=%sassets/media/test.%s",
             self.index, #self.formats, self.format, self.VOLUME, self.directory, self.format)
         if self.video:start(self.directory .. "assets/media/test." .. self.format, self.VOLUME, true) then
             return true
@@ -56,7 +56,7 @@ function TMSVideoProbe:update(dt)
     local before = self.video.state
     self.video:update(dt)
     if before ~= self.video.state then
-        Logging.info("[TractorMediaScreen] Video %s: %s", self.format, self.video.state)
+        TMSLog.info("[TractorMediaScreen] Video %s: %s", self.format, self.video.state)
     end
     if self.video.state == "error" or self.video.state == "timeout" or self.video.state == "unavailable" then
         self:recordFailure()

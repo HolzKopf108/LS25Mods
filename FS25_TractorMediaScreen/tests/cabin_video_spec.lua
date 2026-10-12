@@ -1,6 +1,7 @@
 -- Clock/material behavior only. This cannot prove FS25 rendering performance.
 local path = debug.getinfo(1, "S").source:sub(2):gsub("\\", "/")
 local mod = path:match("^(.*)/tests/[^/]+$") or "."
+dofile(mod .. "/scripts/TMSLog.lua")
 dofile(mod .. "/scripts/media/TMSCabinClipData.lua")
 dofile(mod .. "/scripts/media/TMSCabinVideo.lua")
 local count, warnings = 0, 0
