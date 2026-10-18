@@ -1,7 +1,7 @@
 -- Client playback is never serialized. Only the monitor purchase is a normal
 -- vehicle configuration, synchronized by FS25 itself.
 TractorMediaScreen = {
-    VERSION = "0.1.7.0",
+    VERSION = "0.1.8.0",
     modName = g_currentModName,
     modDirectory = g_currentModDirectory,
     i18n = g_i18n,
@@ -47,17 +47,9 @@ function TractorMediaScreen:loadMap()
         setTexture = TMSVehicle.setDisplayTexture, restore = TMSVehicle.restoreDisplay
     })
     local pixelPip = TMSPixelPip.new(self.modDirectory, {
-        loadI3DFile = loadI3DFile, getNumOfChildren = getNumOfChildren, getChildAt = getChildAt,
-        getRootNode = getRootNode, link = link, setVisibility = setVisibility,
-        createCamera = createCamera, setTranslation = setTranslation, setRotation = setRotation,
-        setIsOrthographic = setIsOrthographic, setOrthographicHeight = setOrthographicHeight,
-        setMaterial = setMaterial, createRenderOverlay = createRenderOverlay,
-        updateRenderOverlay = updateRenderOverlay, renderOverlay = renderOverlay, delete = delete,
+        createImageOverlay = createImageOverlay, renderOverlay = renderOverlay, delete = delete,
         setOverlayUVs = setOverlayUVs, setOverlayColor = setOverlayColor,
-        getIsOverlayReady = getIsOverlayReady, getVisibility = getVisibility, getMaterial = getMaterial,
-        getTranslation = getTranslation, getRotation = getRotation,
-        getIsOrthographic = getIsOrthographic, getOrthographicHeight = getOrthographicHeight,
-        atmosphereQualityOff = AtmosphereQuality and AtmosphereQuality.OFF
+        getIsOverlayReady = getIsOverlayReady
     })
     self.pixelProbe = TMSPixelProbe.new(self.modDirectory, {
         createTextureBuffer = createTextureBuffer,

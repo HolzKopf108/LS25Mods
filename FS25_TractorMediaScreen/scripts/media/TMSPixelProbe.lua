@@ -32,7 +32,7 @@ end
 function TMSPixelProbe:stop(reason)
     local wasActive = self.active
     self.active = false
-    -- PiP shares our material. Release its scene before the final texture.
+    -- Stop the optional HUD and drop its reference to our last uploaded pixels.
     if self.pipRenderer ~= nil then self.pipRenderer:stop() end
     -- Remove the material's owner before releasing its last texture entity.
     for _, key in ipairs({"root", "pendingTexture", "texture"}) do
@@ -44,6 +44,7 @@ function TMSPixelProbe:stop(reason)
         end
     end
     self.node, self.material, self.parent = nil, nil, nil
+    self.pixelData = nil
     self.state = reason or "idle"
     if wasActive then
         TMSLog.info("[TractorMediaScreen] Pixel probe stopped: reason=%s uploads=%d; visual result requires player confirmation",
@@ -62,8 +63,9 @@ function TMSPixelProbe:upload(frame)
     local api = self.api
     -- This allocates one immutable buffer per displayed frame. It does not
     -- retain a movie or assume an undocumented in-place texture upload API.
+    local pixels = TMSPixelProbe.pixels(frame)
     local texture = api.createTextureBuffer("TMSPixelProbe_" .. self.serial .. "_" .. frame,
-        api.format, TMSPixelProbe.pixels(frame))
+        api.format, pixels)
     if type(texture) ~= "number" or not (texture > 0) or texture == math.huge or texture % 1 ~= 0 then
         error("texture buffer creation returned no entity")
     end
@@ -75,10 +77,9 @@ function TMSPixelProbe:upload(frame)
     end
     api.setMaterial(self.node, material, 0)
     self.material = material
-    -- Both surfaces must release a replaced material before the previous buffer.
-    if self.pipRenderer ~= nil then self.pipRenderer:setMaterial(material) end
     if self.texture ~= nil then api.delete(self.texture) end
     self.texture, self.pendingTexture = texture, nil
+    self.pixelData = pixels
     self.frame, self.uploads = frame, self.uploads + 1
 end
 
@@ -126,12 +127,14 @@ function TMSPixelProbe:update(dt, showPip)
         local ok, reason = pcall(self.upload, self, frame)
         if not ok then self:fail(reason); return end
     end
-    -- Redraw the existing material only when PiP is requested. No second clock,
-    -- texture upload, or decoder is created, even when PiP is shown repeatedly.
-    if showPip and self.pipRenderer ~= nil then self.pipRenderer:prepare(self.material, self.frame) end
+    -- Pass exactly the successfully uploaded pixels, only when PiP is requested.
+    -- There is no second generator, clock, texture upload, or decoder.
+    if showPip and self.pipRenderer ~= nil then
+        self.pipRenderer:prepare(self.pixelData, self.WIDTH, self.HEIGHT, self.frame)
+    end
 end
 
 function TMSPixelProbe:draw(x, y, width, height)
     if not self.active or self.pipRenderer == nil then return false end
-    return self.pipRenderer:draw(self.material, self.frame, x, y, width, height)
+    return self.pipRenderer:draw(self.frame, x, y, width, height)
 end

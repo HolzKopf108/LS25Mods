@@ -32,7 +32,7 @@ def runtime_files(mod=MOD):
         path = mod / name
         if not path.is_file() or not path.resolve().is_relative_to(mod.resolve()):
             raise ValueError(f"Missing or unsafe runtime file: {name}")
-    required = {"assets/monitor/monitor.i3d", "assets/monitor/black.dds",
+    required = {"assets/monitor/monitor.i3d", "assets/monitor/black.dds", "assets/monitor/white.dds",
                 "assets/monitor/testPattern.dds", "assets/media/test.ogv",
                 "assets/media/test.mp4", "assets/media/test.webm", "assets/gui/TMSLinkDialog.xml",
                 "assets/pixelProbe/screen.i3d", "assets/pixelProbe/pixelsShader.xml"}

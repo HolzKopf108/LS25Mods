@@ -16,7 +16,7 @@ spec.loader.exec_module(builder)
 class AssetsAndPackage(unittest.TestCase):
     def test_runtime_selection(self):
         files, version = builder.runtime_files()
-        self.assertEqual(version, "0.1.7.0")
+        self.assertEqual(version, "0.1.8.0")
         self.assertIn("scripts/TMSLog.lua", files)
         desc = ET.parse(MOD / "modDesc.xml").getroot()
         self.assertEqual(desc.find("extraSourceFiles/sourceFile").get("filename"), "scripts/TMSLog.lua")
@@ -27,6 +27,7 @@ class AssetsAndPackage(unittest.TestCase):
         self.assertIn("scripts/media/TMSPixelPip.lua", files)
         self.assertIn("assets/pixelProbe/pixelsShader.xml", files)
         self.assertIn("assets/pixelProbe/screen.i3d", files)
+        self.assertIn("assets/monitor/white.dds", files)
         self.assertIn("scripts/media/TMSCabinVideo.lua", files)
         self.assertIn("scripts/media/TMSCabinClipData.lua", files)
         self.assertEqual(len([name for name in files if name.startswith("assets/media/cabinTest/")]), 90)
@@ -71,6 +72,27 @@ class AssetsAndPackage(unittest.TestCase):
                 width, height = max(1, width//2), max(1, height//2)
             self.assertEqual(len(data), total)
             self.assertEqual((width, height), (1, 1))
+
+    def test_pixel_pip_white_texture_is_opaque_white_at_every_mip(self):
+        data = (MOD / "assets/monitor/white.dds").read_bytes()
+        self.assertEqual(data[:4], b"DDS ")
+        self.assertEqual(data[84:88], b"DXT1")
+        header = struct.unpack("<31I", data[4:128])
+        self.assertEqual((header[2], header[3], header[6]), (4, 4, 3))
+        # Each 4x4, 2x2 and 1x1 level occupies one complete BC1 block.
+        self.assertEqual(len(data), 128 + 3 * 8)
+        for level in range(3):
+            c0, c1, indices = struct.unpack_from("<HHI", data, 128 + level * 8)
+            self.assertGreater(c0, c1, "BC1 must use its opaque four-color mode")
+            def rgb565(color):
+                return ((color >> 11) * 255 // 31,
+                        ((color >> 5) & 63) * 255 // 63, (color & 31) * 255 // 31)
+            a, b = rgb565(c0), rgb565(c1)
+            palette = (a, b, tuple((2 * a[i] + b[i]) // 3 for i in range(3)),
+                       tuple((a[i] + 2 * b[i]) // 3 for i in range(3)))
+            for pixel in range(16):
+                self.assertEqual(palette[(indices >> (pixel * 2)) & 3], (255, 255, 255),
+                                 f"Non-white texel at mip {level}, pixel {pixel}")
 
     def test_zip_exact_source(self):
         target = builder.build()

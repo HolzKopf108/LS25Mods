@@ -1,15 +1,12 @@
--- A private, flat view of the same material used by the cabin surface.
--- FS25 RenderElement documents the scene, overlay and cleanup sequence:
--- https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=480&version=engine
--- FS25 orthographic camera APIs:
--- https://gdn.giants-software.com/documentation_scripting_fs25.php?category=2&function=46&version=engine
--- https://gdn.giants-software.com/documentation_scripting_fs25.php?category=2&function=48&version=engine
+-- Bounded HUD raster for the 32x18 probe using its uploaded CPU pixels.
+-- RenderOverlay was black in FS25 1.24 despite ready=true. This bypasses that
+-- unresolved path; it is NOT a high-resolution video sink.
+-- FS25 Overlay documents image overlays, tint multiplication and HUD drawing:
+-- https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=474&version=engine
 TMSPixelPip = {}
 TMSPixelPip.__index = TMSPixelPip
-TMSPixelPip.REQUIRED = {"loadI3DFile", "getNumOfChildren", "getChildAt", "getRootNode",
-    "link", "setVisibility", "createCamera", "setTranslation", "setRotation",
-    "setIsOrthographic", "setOrthographicHeight", "createRenderOverlay",
-    "updateRenderOverlay", "renderOverlay", "setOverlayUVs", "setOverlayColor", "setMaterial", "delete"}
+TMSPixelPip.REQUIRED = {"createImageOverlay", "renderOverlay", "setOverlayUVs", "setOverlayColor", "delete"}
+TMSPixelPip.MAX_WIDTH, TMSPixelPip.MAX_HEIGHT = 32, 18
 
 local function integer(value, minimum)
     return type(value) == "number" and value == value and value < math.huge
@@ -21,46 +18,30 @@ local function detail(value)
 end
 
 function TMSPixelPip.new(directory, api)
-    return setmetatable({directory = directory, api = api or {}, renderCount = 0,
-        drawCount = 0, skippedDrawCount = 0}, TMSPixelPip)
+    return setmetatable({directory = directory, api = api or {}, preparedCount = 0,
+        drawCount = 0, cellDrawCount = 0, skippedDrawCount = 0}, TMSPixelPip)
 end
 
--- Optional readbacks are diagnostics only. Missing/failed getters must not
--- disable playback, and DEBUG=false must not call any of them.
-local function read(api, name, ...)
-    if type(api[name]) ~= "function" then return "unavailable" end
-    if select(1, ...) == nil then return "not-created" end
-    local values = {pcall(api[name], ...)}
-    if not values[1] then return "readback-error:" .. detail(values[2]) end
-    local result = {}
-    for i = 2, #values do result[#result + 1] = detail(values[i]) end
-    return #result > 0 and table.concat(result, ",") or "nil"
-end
-
-function TMSPixelPip:report(stage, frame)
+function TMSPixelPip:report(stage)
     if not TMSLog.DEBUG then return end
-    local api = self.api
-    TMSLog.info("[TractorMediaScreen] Pixel PiP %s: frame=%s renders=%d draws=%d skipped=%d overlay=%s ready=%s material=%s/%s sceneVisible=%s surfaceVisible=%s",
-        stage, tostring(frame), self.renderCount, self.drawCount, self.skippedDrawCount,
-        tostring(self.overlay), read(api, "getIsOverlayReady", self.overlay),
-        tostring(self.material), read(api, "getMaterial", self.node, 0),
-        read(api, "getVisibility", self.scene), read(api, "getVisibility", self.node))
+    local ready = "unavailable"
+    if self.overlay ~= nil and type(self.api.getIsOverlayReady) == "function" then
+        local ok, value = pcall(self.api.getIsOverlayReady, self.overlay)
+        ready = ok and tostring(value) or "readback-error:" .. detail(value)
+    end
+    TMSLog.info("[TractorMediaScreen] Pixel PiP %s: mode=cpu-raster source=cabin-upload frame=%s size=%sx%s prepared=%d draws=%d cells=%d skipped=%d overlay=%s ready=%s",
+        stage, tostring(self.frame), tostring(self.width), tostring(self.height), self.preparedCount,
+        self.drawCount, self.cellDrawCount, self.skippedDrawCount, tostring(self.overlay), ready)
 end
 
 function TMSPixelPip:release()
-    local failure
-    -- The overlay refers to the scene. The scene owns its linked camera.
-    -- Keep an unlinked camera separately so a partial setup can also be freed.
-    for _, key in ipairs({"overlay", "scene", "orphanCamera"}) do
-        local id = self[key]
-        self[key] = nil
-        if id ~= nil then
-            local ok, reason = pcall(self.api.delete, id)
-            if not ok and failure == nil then failure = reason end
-        end
+    local overlay = self.overlay
+    self.overlay, self.pixels, self.frame, self.width, self.height = nil, nil, nil, nil, nil
+    -- Only this overlay is owned here. Never mutate cabin geometry/materials.
+    if overlay ~= nil then
+        local ok, reason = pcall(self.api.delete, overlay)
+        if not ok then return reason end
     end
-    self.camera, self.node, self.material, self.lastFrame = nil, nil, nil, nil
-    return failure
 end
 
 function TMSPixelPip:fail(reason)
@@ -73,106 +54,76 @@ function TMSPixelPip:fail(reason)
 end
 
 function TMSPixelPip:stop()
-    if self.scene ~= nil then self:report("stop", self.lastFrame) end
+    if self.overlay ~= nil then self:report("stop") end
     local failure = self:release()
-    self.error, self.renderCount, self.drawCount, self.skippedDrawCount = nil, 0, 0, 0
+    self.error, self.preparedCount, self.drawCount, self.cellDrawCount, self.skippedDrawCount = nil, 0, 0, 0, 0
     self.lastReportFrame = nil
     if failure ~= nil then self:fail(failure) end
 end
 
-function TMSPixelPip:setMaterial(material)
+function TMSPixelPip:prepare(pixels, width, height, frame)
     if self.error ~= nil then return false end
-    if not integer(material, 1) then return self:fail("invalid material entity") end
-    -- Hidden PiP has no scene yet. The next prepare receives the latest material.
-    if self.node == nil or material == self.material then return true end
-    local ok, reason = pcall(self.api.setMaterial, self.node, material, 0)
-    if not ok then return self:fail(reason) end
-    self.material, self.lastFrame = material, nil
-    return true
-end
-
-function TMSPixelPip:create(material)
-    local api = self.api
-    for _, name in ipairs(self.REQUIRED) do
-        if type(api[name]) ~= "function" then error("missing API: " .. name) end
+    if not integer(frame, 0) or not integer(width, 1) or not integer(height, 1)
+        or width > self.MAX_WIDTH or height > self.MAX_HEIGHT
+        or type(pixels) ~= "table" or #pixels ~= width * height * 4 then
+        return self:fail("invalid or oversized CPU raster (maximum 32x18 RGBA)")
     end
-    if not integer(api.atmosphereQualityOff, 0) then error("AtmosphereQuality.OFF unavailable") end
-    local scene = api.loadI3DFile(self.directory .. "assets/pixelProbe/screen.i3d", false, false, false)
-    if not integer(scene, 1) then error("PiP scene load failed") end
-    self.scene = scene
-    api.setVisibility(scene, false)
-    if api.getNumOfChildren(scene) ~= 1 then error("unexpected PiP model") end
-    self.node = api.getChildAt(scene, 0)
-    if not integer(self.node, 1) then error("PiP surface unavailable") end
-    api.setVisibility(self.node, true)
-    api.link(api.getRootNode(), scene)
-    api.setMaterial(self.node, material, 0)
-    self.material = material
-
-    local camera = api.createCamera("TMSPixelPip", math.rad(60), 0.01, 2)
-    if not integer(camera, 1) then error("PiP camera creation failed") end
-    self.camera, self.orphanCamera = camera, camera
-    api.link(scene, camera)
-    self.orphanCamera = nil
-    -- The existing quad faces +Z and measures 0.256 x 0.144 metres.
-    -- A camera at +Z with no rotation looks along -Z; no world camera changes.
-    api.setTranslation(camera, 0, 0, 1)
-    api.setRotation(camera, 0, 0, 0)
-    api.setIsOrthographic(camera, true)
-    api.setOrthographicHeight(camera, 0.144)
-    -- A complete monitor image is opaque. Do not depend on the scene pass's
-    -- output alpha, which is unrelated to the source pixel buffer's alpha.
-    local overlay = api.createRenderOverlay(scene, camera, 16 / 9, 512, 288,
-        false, 255, 67108864, false, 0, false, 0, false, api.atmosphereQualityOff)
-    if not integer(overlay, 1) then error("PiP overlay creation failed") end
-    self.overlay = overlay
-    if TMSLog.DEBUG then
-        TMSLog.info("[TractorMediaScreen] Pixel PiP setup: scene=%s surface=%s camera=%s overlay=%s target=512x288 useAlpha=false shapesMask=255; cameraPosition=%s cameraRotation=%s orthographic=%s height=%s; source=cabin-material",
-            tostring(scene), tostring(self.node), tostring(camera), tostring(overlay),
-            read(api, "getTranslation", camera), read(api, "getRotation", camera),
-            read(api, "getIsOrthographic", camera), read(api, "getOrthographicHeight", camera))
+    if pixels == self.pixels and frame == self.frame and width == self.width and height == self.height then return true end
+    -- Probe replaces, never mutates, its table after each successful upload.
+    -- Keep that exact table; do not regenerate the animation or run another clock.
+    for i = 1, #pixels do
+        local v = pixels[i]
+        if type(v) ~= "number" or not (v >= 0 and v <= 1) then return self:fail("invalid RGBA component") end
     end
-end
-
-function TMSPixelPip:prepare(material, frame)
-    if self.error ~= nil then return false end
-    if not integer(material, 1) or not integer(frame, 0) then return self:fail("invalid material or frame") end
     local ok, reason = pcall(function()
-        if self.scene == nil then self:create(material) end
-        if not self:setMaterial(material) then return end
-        -- Both surfaces share the material and its current texture buffer.
-        -- Call from the update phase only while PiP is visible, matching
-        -- RenderElement. Drawing itself never changes the off-screen scene.
-        if self.lastFrame ~= frame then
-            self.api.updateRenderOverlay(self.overlay)
-            self.lastFrame, self.renderCount = frame, self.renderCount + 1
-            if self.lastReportFrame == nil or frame - self.lastReportFrame >= 50 then
-                self:report("update", frame)
-                self.lastReportFrame = frame
+        if self.overlay == nil then
+            for _, name in ipairs(self.REQUIRED) do
+                if type(self.api[name]) ~= "function" then error("missing API: " .. name) end
             end
+            local overlay = self.api.createImageOverlay(self.directory .. "assets/monitor/white.dds")
+            if not integer(overlay, 1) then error("PiP image overlay creation failed") end
+            self.overlay = overlay
+        end
+        self.pixels, self.width, self.height, self.frame = pixels, width, height, frame
+        self.preparedCount = self.preparedCount + 1
+        if self.lastReportFrame == nil or frame - self.lastReportFrame >= 50 then
+            self:report("update")
+            self.lastReportFrame = frame
         end
     end)
     if not ok then return self:fail(reason) end
-    return self.error == nil
+    return true
 end
 
-function TMSPixelPip:draw(material, frame, x, y, width, height)
-    if self.error ~= nil or self.overlay == nil or material ~= self.material or frame ~= self.lastFrame then
+function TMSPixelPip:draw(frame, x, y, width, height)
+    if self.error ~= nil or self.overlay == nil or frame ~= self.frame then
         self.skippedDrawCount = self.skippedDrawCount + 1
         return false
     end
     local ok, reason = pcall(function()
-        -- FS25 RenderElement explicitly assigns these UVs immediately before
-        -- drawing. Render targets must not rely on image-overlay defaults.
-        self.api.setOverlayUVs(self.overlay, 0, 0, 0, 1, 1, 0, 1, 1)
-        self.api.setOverlayColor(self.overlay, 1, 1, 1, 1)
-        self.api.renderOverlay(self.overlay, x, y, width, height)
+        local api, overlay, pixels = self.api, self.overlay, self.pixels
+        api.setOverlayUVs(overlay, 0, 0, 0, 1, 1, 0, 1, 1)
+        -- Both the buffer shader and HUD use bottom-left row zero.
+        -- Shared edge calculations avoid gaps or overlaps between cells.
+        for row = 0, self.height - 1 do
+            local bottom = y + row * height / self.height
+            local top = y + (row + 1) * height / self.height
+            for column = 0, self.width - 1 do
+                local i = (row * self.width + column) * 4
+                local left = x + column * width / self.width
+                local right = x + (column + 1) * width / self.width
+                api.setOverlayColor(overlay, pixels[i+1], pixels[i+2], pixels[i+3], pixels[i+4])
+                api.renderOverlay(overlay, left, bottom, right - left, top - bottom)
+                self.cellDrawCount = self.cellDrawCount + 1
+            end
+        end
+        api.setOverlayColor(overlay, 1, 1, 1, 1)
     end)
     if not ok then return self:fail(reason) end
     self.drawCount = self.drawCount + 1
     if self.drawCount == 1 then
-        self:report("first draw", frame)
-        TMSLog.info("[TractorMediaScreen] Pixel PiP rectangle: x=%.4f y=%.4f width=%.4f height=%.4f; UV=0,0/0,1/1,0/1,1 RGBA=1,1,1,1; submitted calls are not a visual confirmation",
+        self:report("first draw")
+        TMSLog.info("[TractorMediaScreen] Pixel PiP rectangle: x=%.4f y=%.4f width=%.4f height=%.4f; maxCellsPerDraw=576; submitted calls are not a visual confirmation",
             x, y, width, height)
     end
     return true

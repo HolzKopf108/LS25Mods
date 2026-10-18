@@ -262,6 +262,7 @@ def main():
     model = meshes()
     make_i3d(model)
     write_dds(ASSETS / "black.dds",4,4,lambda x,y:(0,0,0))
+    write_dds(ASSETS / "white.dds",4,4,lambda x,y:(255,255,255))
     write_dds(ASSETS / "testPattern.dds",512,512,test_pixel)
     write_dds(MOD / "icon.dds",512,512,icon_pixel)
     make_preview(model)
