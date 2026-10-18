@@ -59,11 +59,19 @@ function TMSPixelProbe:fail(reason)
     return false
 end
 
-function TMSPixelProbe:upload(frame)
+function TMSPixelProbe:upload(frame, suppliedPixels)
     local api = self.api
     -- This allocates one immutable buffer per displayed frame. It does not
     -- retain a movie or assume an undocumented in-place texture upload API.
-    local pixels = TMSPixelProbe.pixels(frame)
+    local pixels = suppliedPixels or TMSPixelProbe.pixels(frame)
+    if type(pixels) ~= "table" or #pixels ~= self.WIDTH * self.HEIGHT * 4 then
+        error("invalid pixel buffer dimensions")
+    end
+    for i = 1, #pixels do
+        if type(pixels[i]) ~= "number" or not (pixels[i] >= 0 and pixels[i] <= 1) then
+            error("invalid pixel buffer component")
+        end
+    end
     local texture = api.createTextureBuffer("TMSPixelProbe_" .. self.serial .. "_" .. frame,
         api.format, pixels)
     if type(texture) ~= "number" or not (texture > 0) or texture == math.huge or texture % 1 ~= 0 then
@@ -83,7 +91,7 @@ function TMSPixelProbe:upload(frame)
     self.frame, self.uploads = frame, self.uploads + 1
 end
 
-function TMSPixelProbe:start(parent)
+function TMSPixelProbe:start(parent, initialPixels, initialFrame)
     self:stop()
     self.error = nil
     local api = self.api
@@ -96,8 +104,8 @@ function TMSPixelProbe:start(parent)
     end
     if parent == nil or parent == 0 then return self:fail("monitor not attached") end
     self.serial, self.elapsed, self.frame, self.uploads = self.serial + 1, 0, nil, 0
-    TMSLog.info("[TractorMediaScreen] Pixel probe begin: 32x18 RGBA float, 10 uploads/s, 20s; format=%s; no image files or decoder",
-        tostring(api.format))
+    TMSLog.info("[TractorMediaScreen] Pixel surface begin: 32x18 RGBA float; format=%s; source=%s",
+        tostring(api.format), initialPixels ~= nil and "decoded-video" or "generated-20s-probe")
     local ok, reason = pcall(function()
         local root = api.loadI3DFile(self.directory .. "assets/pixelProbe/screen.i3d", false, false, false)
         if root == nil or root == 0 then error("probe I3D load failed") end
@@ -105,7 +113,7 @@ function TMSPixelProbe:start(parent)
         api.setVisibility(root, false)
         if api.getNumOfChildren(root) ~= 1 then error("unexpected probe model") end
         self.node = api.getChildAt(root, 0)
-        self:upload(0)
+        self:upload(initialFrame or 0, initialPixels)
         api.link(parent, root)
         self.parent = parent
         api.setVisibility(root, true)

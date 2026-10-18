@@ -14,6 +14,9 @@ load("scripts/media/TMSNativeVideo.lua")
 load("scripts/media/TMSVideoProbe.lua")
 load("scripts/media/TMSRuntimeApiReport.lua")
 load("scripts/media/TMSPixelProbe.lua")
+load("scripts/media/TMSQtrleDecoder.lua")
+load("scripts/media/TMSDecodedClipData.lua")
+load("scripts/media/TMSDecodedVideo.lua")
 load("scripts/media/TMSCabinClipData.lua")
 load("scripts/media/TMSCabinVideo.lua")
 
@@ -38,13 +41,14 @@ check(TMSProfiles.find("mydata/vehicles/valtra/sSeries/sSeries.xml") == nil, "Re
 
 local created, stopped, deleted, started = 0, 0, 0, 0
 local ready, playing, throwUpdate = false, false, false
-local lastLoop, lastVolume
+local lastLoop, lastVolume, lastVideoFilename
 local decoderTime = 0
 local api = {
     createVideoOverlay = function(filename, looping, volume)
         check(type(looping) == "boolean" and type(volume) == "number" and volume >= 0 and volume <= 1,
             "Explicit loop/volume settings")
         lastLoop, lastVolume = looping, volume
+        lastVideoFilename = filename
         created = created + 1; return 100 + created
     end,
     isVideoOverlayReadyToPlay = function() return ready end,
@@ -240,7 +244,8 @@ function setTextColor() end
 function setTextAlignment() end
 function setTextBold() end
 function getCorrectTextSize(size) return size end
-local hudCaption
+local hudCaption, nativeHudDraws = nil, 0
+function renderOverlay() nativeHudDraws = nativeHudDraws + 1 end
 function renderText(_, _, _, text) hudCaption = text end
 TextureFormat = {R32G32B32A32_FLOAT = 27}
 function createTextureBuffer(name, format, data)
@@ -397,6 +402,96 @@ TractorMediaScreen:startPixelTest()
 TractorMediaScreen:startVideoTest("mp4")
 check(not TractorMediaScreen.pixelProbe.active and TractorMediaScreen.pixelProbe.root == nil
     and TractorMediaScreen.videoProbe.active, "Switching to video releases pixel material first")
+
+-- The packaged Lua decoder shares the native OGV clock/audio/PiP and never
+-- dispatches the old DDS animation. Test its full controller lifecycle.
+local function preparedFrameEdits()
+    local result = 0
+    for _, edit in ipairs(edits) do
+        if edit.filename:find("frame_", 1, true) then result = result + 1 end
+    end
+    return result
+end
+ready = false
+TractorMediaScreen.onMenu(input, nil, 1)
+local beforeDecodedPlayers, beforeDecodedUploads = created, pixelUploads
+local beforeDecodedModels, beforeDecodedDds = pixelModelLoads, preparedFrameEdits()
+TMSLinkDialog.pending("", true, "decoded")
+check(TractorMediaScreen.decoderTest and TractorMediaScreen.decodedVideo.state == "waiting"
+    and TractorMediaScreen.videoProbe.format == "ogv" and not TractorMediaScreen.pip,
+    "Decoder menu starts its explicit OGV mode without automatically showing PiP")
+check(created == beforeDecodedPlayers + 1 and lastLoop and lastVolume == 1
+    and lastVideoFilename:find("assets/media/test.ogv", 1, true),
+    "Lua decoder mode creates exactly one native OGV audio/PiP player at the established volume")
+TractorMediaScreen:update(100)
+check(pixelUploads == beforeDecodedUploads and pixelModelLoads == beforeDecodedModels,
+    "No cabin surface or generated pattern appears while the actual OGV clock is unavailable")
+ready, decoderTime = true, 0
+TractorMediaScreen:update(16)
+check(TractorMediaScreen.decodedVideo.state == "playing" and TractorMediaScreen.decodedVideo.frame == 0
+    and pixelUploads == beforeDecodedUploads + 1 and not TractorMediaScreen.pixelProbe.active,
+    "The first real decoder frame reaches a separate cabin surface when OGV starts")
+local decodedPlayer = TractorMediaScreen.video.id
+local beforeDecodedPip = pixelPipDraws
+local beforeNativeHud = nativeHudDraws
+TractorMediaScreen.onPip(input, nil, 1)
+TractorMediaScreen:draw()
+check(nativeHudDraws == beforeNativeHud + 1 and pixelPipDraws == beforeDecodedPip
+    and hudCaption == "tms_decodedTest (OGV)",
+    "Decoder mode draws the established native OGV PiP with an explicit Lua cabin caption")
+TractorMediaScreen.onPip(input, nil, 1)
+decoderTime = 0.7
+TractorMediaScreen:update(2000)
+check(TractorMediaScreen.decodedVideo.frame == 7 and TractorMediaScreen.video.id == decodedPlayer
+    and not TractorMediaScreen.pip, "Hidden PiP keeps the same player and cabin follows native time instead of game dt")
+local uploadsAtSeven = pixelUploads
+TractorMediaScreen:update(100)
+check(pixelUploads == uploadsAtSeven, "An unchanged native position never uploads a different generated frame")
+decoderTime = 5.9
+TractorMediaScreen:update(100)
+decoderTime = 0.1
+TractorMediaScreen:update(100)
+check(TractorMediaScreen.decodedVideo.frame == 1 and created == beforeDecodedPlayers + 1,
+    "The native clip loop rewinds Lua decoding without creating a second audio player")
+check(preparedFrameEdits() == beforeDecodedDds,
+    "Decoder mode never applies a precomputed DDS frame")
+TractorMediaScreen:update(20000)
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.video.id == nil
+    and TractorMediaScreen.decodedVideo.state == "idle",
+    "The bounded decoder test stops native audio and cabin output after its active duration")
+ready = false
+messagesBefore = InfoDialog.count
+TractorMediaScreen:startDecodedTest()
+TractorMediaScreen:update(15001)
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.video.id == nil
+    and InfoDialog.count == messagesBefore + 1 and InfoDialog.last == "tms_decodedFailed",
+    "Native OGV failure ends decoder mode without format fallback and reports exactly once")
+ready, decoderTime = true, 0
+TractorMediaScreen:startDecodedTest()
+TractorMediaScreen:update(16)
+g_gui.getIsGuiVisible = function() return true end
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.video.id == nil
+    and TractorMediaScreen.decodedVideo.state == "idle", "Opening a menu cleans up Lua decoding and native audio together")
+g_gui.getIsGuiVisible = function() return false end
+TractorMediaScreen:startDecodedTest()
+TractorMediaScreen:update(16)
+TractorMediaScreen:startPixelTest()
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.video.id == nil
+    and TractorMediaScreen.pixelProbe.active, "Starting the old pixel test stops the decoder mode and its audio")
+TractorMediaScreen:startDecodedTest()
+TractorMediaScreen:update(16)
+TractorMediaScreen:startVideoTest("ogv")
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.decodedVideo.state == "idle"
+    and TractorMediaScreen.videoProbe.active, "Starting the established OGV test stops the new decoder surface")
+TractorMediaScreen:startDecodedTest()
+TractorMediaScreen:update(16)
+g_localPlayer.getCurrentVehicle = function() return nil end
+TractorMediaScreen:update(16)
+check(not TractorMediaScreen.decoderTest and TractorMediaScreen.video.id == nil
+    and TractorMediaScreen.decodedVideo.state == "idle", "Exiting releases the Lua decoder session and native audio")
+g_localPlayer.getCurrentVehicle = function() return v2 end
 TractorMediaScreen:startPixelTest()
 g_localPlayer.getCurrentVehicle = function() return nil end
 TractorMediaScreen:update(16)
@@ -415,6 +510,8 @@ check(not mapPixelProbe.active and mapPixelProbe.root == nil and TractorMediaScr
     "Map cleanup releases a running pixel probe")
 check(mapPixelProbe.pixelData == nil and mapPixelProbe.pipRenderer.pixels == nil,
     "Map cleanup releases CPU frames from producer and HUD")
+check(TractorMediaScreen.decodedVideo == nil and not TractorMediaScreen.decoderTest,
+    "Map cleanup discards the decoder session")
 check(next(commands) == nil, "Map cleanup unregisters console commands")
 check(apiCaptures == 1, "Video starts, menus and vehicle changes do not repeat the API inventory")
 
@@ -437,6 +534,8 @@ check(overlays == beforeOverlay and bindings == beforeBind and not TractorMediaS
 check(apiCaptures == 1 and commands.tmsApi == nil, "Dedicated server skips client API inventory")
 check(not TractorMediaScreen:startPixelTest() and pixelUploads == beforePixels
     and TractorMediaScreen.pixelProbe == nil, "Dedicated server cannot run the experimental transfer")
+check(not TractorMediaScreen:startDecodedTest() and TractorMediaScreen.decodedVideo == nil
+    and pixelUploads == beforePixels, "Dedicated server cannot allocate a decoder surface or audio player")
 TractorMediaScreen:deleteMap()
 g_dedicatedServer = nil
 TMSVehicle.onDelete(v1); TMSVehicle.onDelete(v1)

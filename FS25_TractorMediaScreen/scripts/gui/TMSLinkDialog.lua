@@ -27,7 +27,7 @@ function TMSLinkDialog.register(modDirectory)
     return true
 end
 
-function TMSLinkDialog.show(callback, target, defaultText, title, prompt, confirmText, callbackArgs, videoTestText, pixelButtonText)
+function TMSLinkDialog.show(callback, target, defaultText, title, prompt, confirmText, callbackArgs, videoTestText, pixelButtonText, decodedButtonText)
     local self = TMSLinkDialog.instance
     if self == nil or g_gui == nil or self.isOpen then return false end
     self.callback, self.callbackTarget, self.callbackArgs = callback, target, callbackArgs
@@ -37,6 +37,8 @@ function TMSLinkDialog.show(callback, target, defaultText, title, prompt, confir
     self.videoTestButton:setText(videoTestText or "")
     self.pixelTestButton:setText(pixelButtonText or "")
     self.pixelTestButton:setVisible(pixelButtonText ~= nil and pixelButtonText ~= "")
+    self.decodedTestButton:setText(decodedButtonText or "")
+    self.decodedTestButton:setVisible(decodedButtonText ~= nil and decodedButtonText ~= "")
     self.textInputElement.applyProfanityFilter = false
     self.textInputElement.maxCharacters = TMSLinkDialog.MAX_CHARACTERS
     self.textInputElement:setText(defaultText or "")
@@ -85,6 +87,10 @@ end
 
 function TMSLinkDialog:onClickPixelTest()
     self:finish(true, "pixels")
+end
+
+function TMSLinkDialog:onClickDecodedTest()
+    self:finish(true, "decoded")
 end
 
 function TMSLinkDialog:onClickBack()

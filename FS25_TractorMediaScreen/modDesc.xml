@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <modDesc descVersion="110" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Linus</author>
-    <version>0.1.8.0</version>
+    <version>0.1.9.0</version>
     <title>
         <en>Tractor Media Screen - Prototype</en>
         <de>Tractor Media Screen - Prototyp</de>
     </title>
     <description>
-        <en><![CDATA[Development prototype for a configurable cab monitor on the base-game Valtra S Series. Includes a local test pattern and a bundled test clip for the cab monitor and picture-in-picture. Cab playback uses prepared frames of this clip only. YouTube and Twitch playback are not implemented. Each player's media stays local.]]></en>
-        <de><![CDATA[Entwicklungsprototyp für einen konfigurierbaren Kabinenmonitor der Basisspiel-Valtra S-Serie. Enthält ein lokales Testbild und einen mitgelieferten Testfilm für Kabinenmonitor und Bild-in-Bild. Die Kabinenwiedergabe nutzt nur vorbereitete Bilder dieses Clips. YouTube- und Twitch-Wiedergabe sind noch nicht implementiert. Medien bleiben pro Spieler lokal.]]></de>
+        <en><![CDATA[Development prototype for a configurable cab monitor on the base-game Valtra S Series. Includes test patterns, a bundled test clip and an optional Lua video decoder test with 32x18 cab output. Native picture-in-picture and audio share the playback clock. YouTube and Twitch playback are not implemented. Each player's media stays local.]]></en>
+        <de><![CDATA[Entwicklungsprototyp für einen konfigurierbaren Kabinenmonitor der Basisspiel-Valtra S-Serie. Enthält Testbilder, einen mitgelieferten Testfilm und einen optionalen Lua-Videodecodertest mit 32x18 Kabinenausgabe. Natives Bild-in-Bild und Ton teilen den Wiedergabezeitstand. YouTube- und Twitch-Wiedergabe sind noch nicht implementiert. Medien bleiben pro Spieler lokal.]]></de>
     </description>
     <iconFilename>icon.dds</iconFilename>
     <multiplayer supported="true"/>
@@ -24,6 +24,9 @@
         <sourceFile filename="scripts/media/TMSRuntimeApiReport.lua"/>
         <sourceFile filename="scripts/media/TMSPixelPip.lua"/>
         <sourceFile filename="scripts/media/TMSPixelProbe.lua"/>
+        <sourceFile filename="scripts/media/TMSQtrleDecoder.lua"/>
+        <sourceFile filename="scripts/media/TMSDecodedClipData.lua"/>
+        <sourceFile filename="scripts/media/TMSDecodedVideo.lua"/>
         <sourceFile filename="scripts/media/TMSCabinClipData.lua"/>
         <sourceFile filename="scripts/media/TMSCabinVideo.lua"/>
         <sourceFile filename="scripts/gui/TMSLinkDialog.lua"/>
@@ -60,6 +63,9 @@
         <text name="tms_checkLink"><en>Check link</en><de>Link prüfen</de></text>
         <text name="tms_startVideoTest"><en>Start test video</en><de>Testvideo starten</de></text>
         <text name="tms_startPixelTest"><en>Test pixel transfer (20 s)</en><de>Pixeltransfer testen (20 s)</de></text>
+        <text name="tms_startDecodedTest"><en>Test decoder inside mod (20 s)</en><de>Decoder im Mod testen (20 s)</de></text>
+        <text name="tms_decodedTest"><en>Decoder test - cabin: Lua 32x18; picture-in-picture: OGV</en><de>Decodertest - Kabine: Lua 32x18; Bild-in-Bild: OGV</de></text>
+        <text name="tms_decodedFailed"><en>The decoder test could not run. Please send log.txt for analysis.</en><de>Der Decodertest konnte nicht ausgeführt werden. Bitte log.txt zur Auswertung bereitstellen.</de></text>
         <text name="tms_pixelPip"><en>Pixel test - cabin and picture-in-picture (silent)</en><de>Pixeltest - Kabine und Bild-in-Bild (ohne Ton)</de></text>
         <text name="tms_pixelPipFailed"><en>Pixel picture-in-picture failed - see log.txt</en><de>Pixel-Bild-in-Bild fehlgeschlagen - siehe log.txt</de></text>
         <text name="tms_pixelFailed"><en>The pixel transfer test could not run. Please send log.txt for analysis.</en><de>Der Pixeltransfer-Test konnte nicht ausgeführt werden. Bitte log.txt zur Auswertung bereitstellen.</de></text>

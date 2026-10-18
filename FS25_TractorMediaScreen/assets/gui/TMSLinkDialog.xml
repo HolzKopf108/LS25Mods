@@ -33,10 +33,13 @@
             <imageHighlightedColor value="0.3 0.3 0.3 1"/>
             <handleFocus value="true"/>
         </Profile>
+        <Profile name="tmsDecodedTestButton" extends="tmsPixelTestButton" with="anchorTopLeft">
+            <position value="44px -262px"/>
+        </Profile>
     </GuiProfiles>
     <GuiElement profile="newLayer"/>
     <Bitmap profile="dialogFullscreenBg"/>
-    <GuiElement profile="fs25_dialogBg" size="1000px 360px">
+    <GuiElement profile="fs25_dialogBg" size="1000px 408px">
         <ThreePartBitmap profile="fs25_dialogBgMiddleSmall"/>
         <ThreePartBitmap profile="fs25_dialogBgTopSmall"/>
         <ThreePartBitmap profile="fs25_dialogBgBottom"/>
@@ -52,6 +55,7 @@
             </Bitmap>
         </TextInput>
         <Button profile="tmsPixelTestButton" id="pixelTestButton" onClick="onClickPixelTest" visible="false"/>
+        <Button profile="tmsDecodedTestButton" id="decodedTestButton" onClick="onClickDecodedTest" visible="false"/>
         <BoxLayout profile="fs25_dialogButtonBox">
             <Button profile="buttonOK" id="confirmButton" onClick="onClickOk"/>
             <Bitmap profile="fs25_dialogButtonBoxSeparator"/>

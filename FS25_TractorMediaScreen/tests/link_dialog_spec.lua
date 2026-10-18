@@ -51,6 +51,7 @@ function g_gui:loadGui(filename, name, target)
     target.titleElement, target.promptElement, target.confirmButton = textElement(), textElement(), textElement()
     target.videoTestButton = textElement()
     target.pixelTestButton = textElement()
+    target.decodedTestButton = textElement()
     target.textInputElement = textInput()
     local gui = {target = target}
     self.guis[name] = gui
@@ -87,6 +88,7 @@ check(TMSLinkDialog.show(callback, target, fullUrl, "Title", "Prompt", "Check", 
 local view = TMSLinkDialog.instance
 check(view.titleElement.text == "Title" and view.confirmButton.text == "Check", "Dialog labels")
 check(not view.pixelTestButton.visible, "Optional pixel test stays hidden for existing callers")
+check(not view.decodedTestButton.visible, "Optional decoder test stays hidden for existing callers")
 check(not sharedInput.capturing and sharedInput.applyProfanityFilter, "Shared game dialog unchanged")
 check(not TMSLinkDialog.show(callback), "Avoid replacing an open dialog callback")
 view.textInputElement:setForcePressed(false)
@@ -114,8 +116,15 @@ check(view.pixelTestButton.visible and view.pixelTestButton.text == "Pixeltransf
 view:onClickPixelTest()
 check(result.accepted and result.action == "pixels" and result.text == "" and result.args == args,
     "Pixel test dispatches separately without requiring a URL and preserves the session arguments")
+TMSLinkDialog.show(callback, target, "", nil, nil, nil, args, "Test video", "Pixels", "Decoder im Mod testen")
+check(view.decodedTestButton.visible and view.decodedTestButton.text == "Decoder im Mod testen",
+    "The local decoder test has its own explicitly supplied menu label")
+view:onClickDecodedTest()
+check(result.accepted and result.action == "decoded" and result.text == "" and result.args == args,
+    "Decoder test closes the dialog and forwards session identity without requiring a URL")
 TMSLinkDialog.show(callback, target, fullUrl)
 check(not view.pixelTestButton.visible, "Reused dialog hides the pixel test when omitted")
+check(not view.decodedTestButton.visible, "Reused dialog hides the decoder test when omitted")
 view:onEscPressed()
 check(not result.accepted, "Escape cancels")
 TMSLinkDialog.show(callback, target, fullUrl)

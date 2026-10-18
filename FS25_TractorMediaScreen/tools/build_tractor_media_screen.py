@@ -45,6 +45,12 @@ def runtime_files(mod=MOD):
     cabin_frames = cabin_assets.validate_assets(mod)
     if not set(cabin_frames).issubset(files):
         raise ValueError("Cab clip frames are not included in the runtime package")
+    # The Lua video decoder needs packets from exactly the native audio/PiP source.
+    spec = importlib.util.spec_from_file_location("tms_decoded_assets", MOD / "tools/generate_decoded_clip.py")
+    decoded_assets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(decoded_assets)
+    if not set(decoded_assets.validate_assets(mod)).issubset(files):
+        raise ValueError("Compressed decoder test data is not included in the runtime package")
     # The model's file references must stay inside and be included in the ZIP.
     for name in files:
         if name.endswith(".i3d"):
